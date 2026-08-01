@@ -91,7 +91,7 @@ FlavorsExpress uses environment variables for secure and decoupled configuration
 | :--- | :--- | :--- | :--- |
 | `DB_URL` | JDBC URL for MySQL connection | Optional | `jdbc:mysql://localhost:3306/...` |
 | `DB_USERNAME` | Username for database access | **Required** | (User-defined, e.g., `root`) |
-| `DB_PASSWORD` | Password for database access | **Required** | (User-defined, e.g., `Pratham`) |
+| `DB_PASSWORD` | Password for database access | **Required** | (User-defined, e.g., `123456`) |
 | `SERVER_PORT` | Port the backend runs on | Optional | `8080` |
 | `JWT_SECRET` | 512-bit Base64-encoded signing key | **Required** | (Generated Base64 string) |
 | `JWT_EXPIRATION`| Token validity time in milliseconds | Optional | `86400000` (24 hours) |
