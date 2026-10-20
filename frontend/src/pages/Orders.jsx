@@ -24,7 +24,7 @@ const Orders = () => {
     try {
       setLoading(true);
       const res = await api.get(
-        `/orders/customer/${user.id}?page=${page}&size=${PAGE_SIZE}&sortBy=createdAt&sortDir=desc`
+        `/orders/my-orders?page=${page}&size=${PAGE_SIZE}&sortBy=createdAt&sortDir=desc`
       );
       setPagedData(res.data);
     } catch (err) {
@@ -32,7 +32,7 @@ const Orders = () => {
     } finally {
       setLoading(false);
     }
-  }, [user.id, page]);
+  }, [page]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 

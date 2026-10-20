@@ -48,6 +48,10 @@ public class DeliveryPartner {
     @Column(nullable = false, length = 20)
     private DeliveryPartnerStatus status;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", unique = true)
+    private Customer userAccount;
+
     @Builder.Default
     @OneToMany(mappedBy = "deliveryPartner", fetch = FetchType.LAZY)
     private List<Order> orders = new ArrayList<>();

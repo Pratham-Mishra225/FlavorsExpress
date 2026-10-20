@@ -2,7 +2,11 @@ package com.pratham.FDS.controller;
 
 import com.pratham.FDS.dto.DeliveryPartnerDTO;
 import com.pratham.FDS.enums.DeliveryPartnerStatus;
+import com.pratham.FDS.dto.OrderDTO;
+import com.pratham.FDS.entity.DeliveryPartner;
+import com.pratham.FDS.security.SecurityUtils;
 import com.pratham.FDS.service.DeliveryPartnerService;
+import com.pratham.FDS.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +21,20 @@ import java.util.List;
 public class DeliveryPartnerController {
 
     private final DeliveryPartnerService deliveryPartnerService;
+    private final OrderService orderService;
+    private final SecurityUtils securityUtils;
+
+    @GetMapping("/me/orders")
+    public ResponseEntity<List<OrderDTO>> getMyAssignedOrders() {
+        DeliveryPartner partner = securityUtils.getCurrentDeliveryPartner();
+        return ResponseEntity.ok(orderService.getOrdersByDeliveryPartner(partner.getId()));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<DeliveryPartnerDTO> getMyProfile() {
+        DeliveryPartner partner = securityUtils.getCurrentDeliveryPartner();
+        return ResponseEntity.ok(deliveryPartnerService.getDeliveryPartnerById(partner.getId()));
+    }
 
     @PostMapping
     public ResponseEntity<DeliveryPartnerDTO> createDeliveryPartner(

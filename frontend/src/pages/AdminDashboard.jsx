@@ -38,7 +38,7 @@ const AdminDashboard = () => {
   // Form states
   const [newCatName, setNewCatName] = useState('');
   const [newMenuItem, setNewMenuItem] = useState({ name: '', description: '', price: '', categoryId: '', isAvailable: true, isVegetarian: false, preparationTimeMinutes: 15 });
-  const [newPartner, setNewPartner] = useState({ name: '', email: '', phone: '', vehicleNumber: '', status: 'AVAILABLE' });
+  const [newPartner, setNewPartner] = useState({ name: '', email: '', phone: '', status: 'AVAILABLE', password: '' });
   const [newPromo, setNewPromo] = useState({ code: '', discountPercentage: '', maxDiscountAmount: '', minOrderAmount: '', usageLimit: '', expiryDate: '', isActive: true });
 
   const loadData = useCallback(async () => {
@@ -123,7 +123,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       await api.post('/delivery-partners', newPartner);
-      setNewPartner({ name: '', email: '', phone: '', vehicleNumber: '', status: 'AVAILABLE' });
+      setNewPartner({ name: '', email: '', phone: '', status: 'AVAILABLE', password: '' });
       loadData();
     } catch (err) { alert(err.response?.data?.message || 'Failed to create delivery partner'); }
   };
@@ -403,7 +403,7 @@ const AdminDashboard = () => {
               <input required placeholder="Partner Name" value={newPartner.name} onChange={e => setNewPartner({...newPartner, name: e.target.value})} className={inputCls} />
               <input type="email" required placeholder="Email Address" value={newPartner.email} onChange={e => setNewPartner({...newPartner, email: e.target.value})} className={inputCls} />
               <input type="tel" required placeholder="Phone Number" value={newPartner.phone} onChange={e => setNewPartner({...newPartner, phone: e.target.value})} className={inputCls} />
-              <input required placeholder="Vehicle Number" value={newPartner.vehicleNumber} onChange={e => setNewPartner({...newPartner, vehicleNumber: e.target.value})} className={inputCls} />
+              <input type="password" placeholder="Initial Password (default: PartnerPass123!)" value={newPartner.password || ''} onChange={e => setNewPartner({...newPartner, password: e.target.value})} className={inputCls} />
               <button type="submit" className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-md">Register Partner</button>
             </form>
           </div>

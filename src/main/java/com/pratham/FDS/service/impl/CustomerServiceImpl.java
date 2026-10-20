@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -23,6 +25,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public CustomerDTO createCustomer(CustomerDTO customerDTO) {
@@ -31,6 +34,11 @@ public class CustomerServiceImpl implements CustomerService {
             throw new EmailAlreadyExistsException(customerDTO.getEmail());
         }
         Customer customer = customerMapper.toEntity(customerDTO);
+        if (customer.getPassword() == null || customer.getPassword().trim().isEmpty()) {
+            customer.setPassword(passwordEncoder.encode("CustomerPass123!"));
+        } else {
+            customer.setPassword(passwordEncoder.encode(customer.getPassword()));
+        }
         Customer savedCustomer = customerRepository.save(customer);
         log.info("Customer created successfully with ID: {}", savedCustomer.getId());
         return customerMapper.toDTO(savedCustomer);

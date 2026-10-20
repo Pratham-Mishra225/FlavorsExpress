@@ -42,38 +42,37 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
+                        // 1. Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/menu-items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/customers").permitAll() // Registration
-
-                        // Swagger UI & OpenAPI docs (public)
+                        .requestMatchers(HttpMethod.POST, "/api/promo-codes/validate").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
-                        // Promo code validation preview (public — no auth needed for discount preview)
-                        .requestMatchers(HttpMethod.POST, "/api/promo-codes/validate").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/customers/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/customers/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/customers/**").hasRole("ADMIN")
+                        // 2. Delivery Partner specific endpoints
+                        .requestMatchers("/api/delivery-partners/me/**").hasRole("DELIVERY")
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-status").hasRole("DELIVERY")
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-partner/*/status").hasRole("DELIVERY")
 
-                        // Order endpoints
+                        // 3. Customer Cart and Order endpoints
+                        .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.POST, "/api/orders/checkout").hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/my-orders").hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.GET, "/api/orders/customer/**").hasRole("CUSTOMER")
-                        
-                        // Delivery Partner Assignment & Order Status (ADMIN)
+
+                        // 4. Authenticated Order lookup (ownership enforced in service/controller)
+                        .requestMatchers(HttpMethod.GET, "/api/orders/*").authenticated()
+
+                        // 5. Admin Order and Dispatch endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/orders/status/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/assign-automatic").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/assign-manual/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/orders/status/**").hasRole("ADMIN")
-                        
-                        // Delivery Partner Status Updates
-                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-partner/*/status").hasRole("DELIVERY")
 
-                        // Cart endpoints
-                        .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
+                        // 6. Admin Management (Categories, MenuItems, DeliveryPartners, Customers, Promos, Analytics)
+                        .requestMatchers("/api/customers/**").hasRole("ADMIN")
+                        .requestMatchers("/api/delivery-partners/**").hasRole("ADMIN")
 
-                        // Admin endpoints (Categories, MenuItems, DeliveryPartners)
                         .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
@@ -82,18 +81,28 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/menu-items/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/menu-items/**").hasRole("ADMIN")
 
-                        .requestMatchers("/api/delivery-partners/**").hasRole("ADMIN")
-
-                        // Promo code admin CRUD (ADMIN only)
-                        .requestMatchers(HttpMethod.POST, "/api/promo-codes").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/promo-codes/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/promo-codes/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/promo-codes/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/promo-codes/**").hasRole("ADMIN")
 
-                        // Analytics (ADMIN only)
                         .requestMatchers("/api/analytics/**").hasRole("ADMIN")
 
+                        // 7. All other requests require authentication
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setContentType("application/json");
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                            response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Authentication required: "
+                                    + (authException.getMessage() != null ? authException.getMessage().replace("\"", "\\\"") : "Invalid credentials") + "\"}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setContentType("application/json");
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+                            response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Access denied: insufficient permissions\"}");
+                        })
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

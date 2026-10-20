@@ -17,6 +17,10 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pratham.FDS.entity.Customer;
+import com.pratham.FDS.enums.UserRole;
+import com.pratham.FDS.repository.CustomerRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +41,8 @@ public class DataInitializer implements CommandLineRunner {
     private final MenuRepository menuRepository;
     private final DeliveryPartnerRepository deliveryPartnerRepository;
     private final PromoCodeRepository promoCodeRepository;
+    private final CustomerRepository customerRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -239,18 +245,34 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedDeliveryPartners() {
-        if (deliveryPartnerRepository.count() > 0) {
-            return;
+        String partnerEmail = "alex.delivery@flavorsexpress.com";
+        Customer partnerUser = customerRepository.findByEmail(partnerEmail)
+                .orElseGet(() -> customerRepository.save(Customer.builder()
+                        .name("Alex Morgan")
+                        .email(partnerEmail)
+                        .password(passwordEncoder.encode("DeliveryPass123!"))
+                        .phone("9876543210")
+                        .role(UserRole.DELIVERY_PARTNER)
+                        .build()));
+
+        var existingPartnerOpt = deliveryPartnerRepository.findByEmail(partnerEmail);
+        if (existingPartnerOpt.isEmpty()) {
+            deliveryPartnerRepository.save(DeliveryPartner.builder()
+                    .name("Alex Morgan")
+                    .email(partnerEmail)
+                    .phone("9876543210")
+                    .status(DeliveryPartnerStatus.AVAILABLE)
+                    .userAccount(partnerUser)
+                    .build());
+            log.info("Seeded initial delivery partner linked to customer account.");
+        } else {
+            DeliveryPartner existing = existingPartnerOpt.get();
+            if (existing.getUserAccount() == null) {
+                existing.setUserAccount(partnerUser);
+                deliveryPartnerRepository.save(existing);
+                log.info("Linked existing delivery partner to customer account.");
+            }
         }
-
-        deliveryPartnerRepository.save(DeliveryPartner.builder()
-                .name("Alex Morgan")
-                .email("alex.delivery@flavorsexpress.com")
-                .phone("9876543210")
-                .status(DeliveryPartnerStatus.AVAILABLE)
-                .build());
-
-        log.info("Seeded initial delivery partner.");
     }
 
     private void seedPromoCodes() {

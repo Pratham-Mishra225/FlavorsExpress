@@ -26,6 +26,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.pratham.FDS.security.SecurityUtils;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
     private final DeliveryPartnerRepository deliveryPartnerRepository;
     private final OrderMapper orderMapper;
     private final PromoCodeService promoCodeService;
+    private final SecurityUtils securityUtils;
 
     @Override
     public OrderDTO checkout(CheckoutRequest request) {
@@ -130,6 +133,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderDTO getOrderById(Long id) {
         log.info("Fetching order by ID: {}", id);
         Order order = findOrderOrThrow(id);
+        securityUtils.validateOrderAccess(order);
         return orderMapper.toDTO(order);
     }
 
@@ -265,9 +269,28 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<OrderDTO> getOrdersByDeliveryPartner(Long deliveryPartnerId) {
+        log.info("Fetching orders assigned to delivery partner ID: {}", deliveryPartnerId);
+        return orderRepository.findByDeliveryPartnerId(deliveryPartnerId).stream()
+                .map(orderMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public OrderDTO updateDeliveryStatus(Long orderId, Long partnerId, OrderStatus status) {
         log.info("Delivery partner ID {} updating order ID {} status to {}", partnerId, orderId, status);
         Order order = findOrderOrThrow(orderId);
+
+        // Security check: If authenticated user is a delivery partner, verify that partnerId matches caller
+        if (securityUtils.isDeliveryPartner()) {
+            DeliveryPartner currentPartner = securityUtils.getCurrentDeliveryPartner();
+            if (!currentPartner.getId().equals(partnerId)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Access denied: You cannot update delivery status for another partner."
+                );
+            }
+        }
 
         if (order.getDeliveryPartner() == null || !order.getDeliveryPartner().getId().equals(partnerId)) {
             throw new BadRequestException("Order is not assigned to this delivery partner");

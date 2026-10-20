@@ -24,5 +24,7 @@ public interface OrderService {
 
     OrderDTO updateOrderStatus(Long orderId, OrderStatus status);
 
+    List<OrderDTO> getOrdersByDeliveryPartner(Long deliveryPartnerId);
+
     OrderDTO updateDeliveryStatus(Long orderId, Long partnerId, OrderStatus status);
 }

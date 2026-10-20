@@ -15,15 +15,8 @@ const DeliveryDashboard = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      // Fetch orders in OUT_FOR_DELIVERY, PREPARING, READY
-      const resPrep = await api.get('/orders/status/PREPARING');
-      const resReady = await api.get('/orders/status/READY');
-      const resOut = await api.get('/orders/status/OUT_FOR_DELIVERY');
-      const combined = [...resPrep.data, ...resReady.data, ...resOut.data];
-      
-      // Filter for orders where deliveryPartnerId matches the delivery partner's ID or show active orders
-      const myOrders = combined.filter((ord) => ord.deliveryPartnerId !== null);
-      setAssignedOrders(myOrders);
+      const res = await api.get('/delivery-partners/me/orders');
+      setAssignedOrders(res.data);
     } catch (err) {
       console.error('Failed to load delivery orders:', err);
     } finally {
@@ -33,7 +26,7 @@ const DeliveryDashboard = () => {
 
   const handleUpdateStatus = async (orderId, partnerId, newStatus) => {
     try {
-      await api.put(`/orders/${orderId}/delivery-partner/${partnerId}/status?status=${newStatus}`);
+      await api.put(`/orders/${orderId}/delivery-status?status=${newStatus}`);
       alert(`Order #${orderId} status updated to ${newStatus}`);
       fetchOrders();
     } catch (err) {

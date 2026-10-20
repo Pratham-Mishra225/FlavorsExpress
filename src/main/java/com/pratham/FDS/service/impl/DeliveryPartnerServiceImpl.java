@@ -13,6 +13,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pratham.FDS.entity.Customer;
+import com.pratham.FDS.enums.UserRole;
+import com.pratham.FDS.repository.CustomerRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,17 +28,42 @@ import java.util.stream.Collectors;
 public class DeliveryPartnerServiceImpl implements DeliveryPartnerService {
 
     private final DeliveryPartnerRepository deliveryPartnerRepository;
+    private final CustomerRepository customerRepository;
     private final DeliveryPartnerMapper deliveryPartnerMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public DeliveryPartnerDTO createDeliveryPartner(DeliveryPartnerDTO dto) {
         log.info("Creating delivery partner with email: {}", dto.getEmail());
-        if (deliveryPartnerRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new EmailAlreadyExistsException(dto.getEmail());
+        String normalizedEmail = dto.getEmail().trim().toLowerCase();
+
+        if (deliveryPartnerRepository.findByEmail(normalizedEmail).isPresent()
+                || customerRepository.existsByEmail(normalizedEmail)) {
+            throw new EmailAlreadyExistsException(normalizedEmail);
         }
+
+        // 1. Transactionally provision linked login account with ROLE_DELIVERY
+        String rawPassword = (dto.getPassword() != null && !dto.getPassword().trim().isEmpty())
+                ? dto.getPassword().trim()
+                : "PartnerPass123!";
+
+        Customer customerAccount = Customer.builder()
+                .name(dto.getName().trim())
+                .email(normalizedEmail)
+                .password(passwordEncoder.encode(rawPassword))
+                .phone(dto.getPhone().trim())
+                .role(UserRole.DELIVERY_PARTNER)
+                .build();
+        Customer savedCustomer = customerRepository.save(customerAccount);
+
+        // 2. Provision DeliveryPartner domain record linked to the user account
         DeliveryPartner partner = deliveryPartnerMapper.toEntity(dto);
+        partner.setEmail(normalizedEmail);
+        partner.setUserAccount(savedCustomer);
         DeliveryPartner savedPartner = deliveryPartnerRepository.save(partner);
-        log.info("Delivery partner created successfully with ID: {}", savedPartner.getId());
+
+        log.info("Delivery partner created successfully with ID: {} and linked customer user ID: {}",
+                savedPartner.getId(), savedCustomer.getId());
         return deliveryPartnerMapper.toDTO(savedPartner);
     }
 
@@ -93,7 +123,11 @@ public class DeliveryPartnerServiceImpl implements DeliveryPartnerService {
         log.info("Deleting delivery partner with ID: {}", id);
         DeliveryPartner partner = deliveryPartnerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DeliveryPartner", "id", id));
+        Customer userAccount = partner.getUserAccount();
         deliveryPartnerRepository.delete(partner);
-        log.info("Delivery partner deleted successfully with ID: {}", id);
+        if (userAccount != null) {
+            customerRepository.delete(userAccount);
+        }
+        log.info("Delivery partner and associated login account deleted successfully with ID: {}", id);
     }
 }

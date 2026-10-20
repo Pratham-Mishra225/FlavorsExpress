@@ -59,6 +59,9 @@ public class Customer implements UserDetails {
     @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Cart cart;
 
+    @OneToOne(mappedBy = "userAccount", fetch = FetchType.LAZY)
+    private DeliveryPartner deliveryPartner;
+
     @Builder.Default
     @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
     private List<Order> orders = new ArrayList<>();

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, User, Mail, Lock, Phone, Shield, AlertCircle, ArrowRight } from 'lucide-react';
+import { UserPlus, User, Mail, Lock, Phone, AlertCircle, ArrowRight } from 'lucide-react';
 
 const Register = () => {
   const { register } = useAuth();
@@ -12,7 +12,6 @@ const Register = () => {
     email: '',
     password: '',
     phone: '',
-    role: 'CUSTOMER',
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -26,17 +25,16 @@ const Register = () => {
     setError('');
     setSubmitting(true);
 
-    const result = await register(formData);
+    const result = await register({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      phone: formData.phone,
+    });
     setSubmitting(false);
 
     if (result.success) {
-      if (result.role === 'ADMIN') {
-        navigate('/admin');
-      } else if (result.role === 'DELIVERY_PARTNER') {
-        navigate('/delivery');
-      } else {
-        navigate('/menu');
-      }
+      navigate('/menu');
     } else {
       setError(result.message);
     }
@@ -135,25 +133,6 @@ const Register = () => {
                 onChange={handleChange}
                 className="w-full bg-slate-950/80 border border-slate-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 rounded-xl pl-11 pr-4 py-2.5 text-slate-100 placeholder-slate-600 text-sm outline-none transition-all"
               />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Account Role
-            </label>
-            <div className="relative">
-              <Shield className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 rounded-xl pl-11 pr-4 py-2.5 text-slate-100 text-sm outline-none transition-all appearance-none cursor-pointer"
-              >
-                <option value="CUSTOMER">Customer</option>
-                <option value="ADMIN">Restaurant Admin</option>
-                <option value="DELIVERY_PARTNER">Delivery Partner</option>
-              </select>
             </div>
           </div>
 

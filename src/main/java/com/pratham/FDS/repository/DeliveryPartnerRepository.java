@@ -11,6 +11,8 @@ import java.util.Optional;
 @Repository
 public interface DeliveryPartnerRepository extends JpaRepository<DeliveryPartner, Long> {
     Optional<DeliveryPartner> findByEmail(String email);
+    Optional<DeliveryPartner> findByUserAccountId(Long customerId);
+    Optional<DeliveryPartner> findByUserAccountEmail(String email);
     List<DeliveryPartner> findByStatus(DeliveryPartnerStatus status);
     long countByStatus(DeliveryPartnerStatus status);
     long countByStatusNot(DeliveryPartnerStatus status);

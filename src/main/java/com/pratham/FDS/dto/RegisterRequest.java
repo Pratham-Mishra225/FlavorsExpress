@@ -33,6 +33,7 @@ public class RegisterRequest {
     @Size(max = 15, message = "Phone number must be less than 15 characters")
     private String phone;
 
-    @NotNull(message = "Role is required")
+    // Optional in request; public registration is strictly for CUSTOMER accounts.
+    // If a privileged role is sent, the server explicitly rejects the request.
     private UserRole role;
 }
