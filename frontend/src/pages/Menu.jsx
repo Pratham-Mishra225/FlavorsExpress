@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { useCart } from '../context/CartContext';
-import { Search, Plus, Check, Utensils, ChevronLeft, ChevronRight, Leaf, Drumstick } from 'lucide-react';
+import { Search, Plus, Check, Utensils, ChevronLeft, ChevronRight, Leaf, Drumstick, AlertCircle, RefreshCw } from 'lucide-react';
 
 const Menu = () => {
   const [categories, setCategories] = useState([]);
@@ -11,6 +11,7 @@ const Menu = () => {
   const [vegFilter, setVegFilter] = useState(null); // null = all, true = veg, false = non-veg
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [addedItemIds, setAddedItemIds] = useState([]);
 
   const PAGE_SIZE = 12;
@@ -19,6 +20,7 @@ const Menu = () => {
   const fetchMenuItems = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = new URLSearchParams({
         page,
         size: PAGE_SIZE,
@@ -32,6 +34,7 @@ const Menu = () => {
       setPagedData(res.data);
     } catch (err) {
       console.error('Failed to load menu items:', err);
+      setError(err.response?.data?.message || 'Failed to load menu items. Please check connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -141,6 +144,19 @@ const Menu = () => {
       {/* Menu Grid */}
       {loading ? (
         <div className="text-center py-16 text-slate-400 text-sm">Loading delicious items...</div>
+      ) : error ? (
+        <div className="text-center py-16 bg-rose-950/20 rounded-2xl border border-rose-800/80 p-8 shadow-xl">
+          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-rose-300">Unable to load menu</h3>
+          <p className="text-rose-400 text-xs mt-1 mb-4">{error}</p>
+          <button
+            onClick={fetchMenuItems}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Retry</span>
+          </button>
+        </div>
       ) : filteredItems.length === 0 ? (
         <div className="text-center py-16 bg-slate-900/40 rounded-2xl border border-slate-800/80">
           <Utensils className="w-12 h-12 text-slate-600 mx-auto mb-3" />

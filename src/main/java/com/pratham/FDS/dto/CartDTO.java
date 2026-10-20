@@ -26,4 +26,7 @@ public class CartDTO {
 
     @Builder.Default
     private BigDecimal subtotal = BigDecimal.ZERO;
+
+    @Builder.Default
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 }

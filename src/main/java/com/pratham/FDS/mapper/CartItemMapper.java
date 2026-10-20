@@ -13,12 +13,18 @@ public class CartItemMapper {
         if (cartItem == null) {
             return null;
         }
+        java.math.BigDecimal itemPrice = cartItem.getMenuItem() != null ? cartItem.getMenuItem().getPrice() : null;
+        java.math.BigDecimal subTotal = (itemPrice != null && cartItem.getQuantity() != null)
+                ? itemPrice.multiply(java.math.BigDecimal.valueOf(cartItem.getQuantity()))
+                : java.math.BigDecimal.ZERO;
+
         return CartItemDTO.builder()
                 .id(cartItem.getId())
                 .menuItemId(cartItem.getMenuItem() != null ? cartItem.getMenuItem().getId() : null)
                 .menuItemName(cartItem.getMenuItem() != null ? cartItem.getMenuItem().getName() : null)
-                .price(cartItem.getMenuItem() != null ? cartItem.getMenuItem().getPrice() : null)
+                .price(itemPrice)
                 .quantity(cartItem.getQuantity())
+                .subTotal(subTotal)
                 .build();
     }
 

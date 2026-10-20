@@ -8,18 +8,22 @@ export const CartProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchCart = useCallback(async () => {
     if (!isAuthenticated || !user || user.role !== 'CUSTOMER' || !user.id) {
       setCart(null);
+      setError(null);
       return;
     }
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get(`/cart/${user.id}`);
       setCart(res.data);
     } catch (err) {
       console.error('Failed to fetch cart:', err);
+      setError(err.response?.data?.message || 'Failed to fetch cart.');
     } finally {
       setLoading(false);
     }
@@ -77,7 +81,7 @@ export const CartProvider = ({ children }) => {
   const itemCount = cart?.cartItems?.reduce((total, item) => total + item.quantity, 0) || 0;
 
   return (
-    <CartContext.Provider value={{ cart, loading, itemCount, fetchCart, addToCart, updateQuantity, removeFromCart, clearCart }}>
+    <CartContext.Provider value={{ cart, loading, error, itemCount, fetchCart, addToCart, updateQuantity, removeFromCart, clearCart }}>
       {children}
     </CartContext.Provider>
   );

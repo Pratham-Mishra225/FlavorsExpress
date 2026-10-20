@@ -68,7 +68,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/orders/status/**").hasRole("ADMIN")
                         
                         // Delivery Partner Status Updates
-                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-partner/**/status").hasRole("DELIVERY")
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-partner/*/status").hasRole("DELIVERY")
 
                         // Cart endpoints
                         .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
@@ -119,8 +119,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }

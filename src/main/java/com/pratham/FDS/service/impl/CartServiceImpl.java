@@ -69,6 +69,7 @@ public class CartServiceImpl implements CartService {
                 .customerId(cart.getCustomer().getId())
                 .cartItems(itemDTOs)
                 .subtotal(subtotal)
+                .totalAmount(subtotal)
                 .build();
     }
 
@@ -76,7 +77,7 @@ public class CartServiceImpl implements CartService {
     // Get cart (auto-creates if missing)
     // -------------------------------------------------------
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public CartDTO getCart(Long customerId) {
         log.info("Fetching cart for customer ID: {}", customerId);
         Cart cart = getOrCreateCart(customerId);

@@ -32,9 +32,10 @@ build/
 ### VS Code ###
 .vscode/
 
-# Local Environment variables (Backend)
+# Environment and secrets
 .env
-.env.*
-application-local.properties
-application-local.yml
+*.env.local
 
+# Logs
+logs/
+*.log

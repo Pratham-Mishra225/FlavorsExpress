@@ -27,4 +27,6 @@ public class CartItemDTO {
     @NotNull(message = "Quantity is required")
     @Positive(message = "Quantity must be positive")
     private Integer quantity;
+
+    private BigDecimal subTotal;
 }
