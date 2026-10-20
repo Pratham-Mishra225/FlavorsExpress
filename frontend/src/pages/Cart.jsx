@@ -7,7 +7,7 @@ const Cart = () => {
   const { cart, loading, error, fetchCart, updateQuantity, removeFromCart, clearCart } = useCart();
   const navigate = useNavigate();
 
-  const cartItems = cart?.cartItems || [];
+  const cartItems = cart?.cartItems || cart?.items || [];
   const totalAmount = cart?.totalAmount ?? cart?.subtotal ?? 0;
 
   return (
@@ -75,7 +75,7 @@ const Cart = () => {
                 className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-md"
               >
                 <div className="space-y-1">
-                  <h4 className="font-bold text-slate-100 text-base">{item.menuItemName}</h4>
+                  <h4 className="font-bold text-slate-100 text-base">{item.name || item.menuItemName}</h4>
                   <p className="text-xs text-amber-400 font-semibold">
                     ${Number(item.price).toFixed(2)} each
                   </p>
@@ -85,7 +85,13 @@ const Cart = () => {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1">
                     <button
-                      onClick={() => updateQuantity(item.id, item.menuItemId, item.quantity - 1)}
+                      onClick={() => {
+                        if (item.quantity <= 1) {
+                          removeFromCart(item.id);
+                        } else {
+                          updateQuantity(item.id, item.menuItemId, item.quantity - 1);
+                        }
+                      }}
                       className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                       aria-label="Decrease quantity"
                     >
@@ -104,7 +110,7 @@ const Cart = () => {
                   </div>
 
                   <span className="text-sm font-bold text-slate-100 min-w-[60px] text-right">
-                    ${(Number(item.subTotal ?? (item.price * item.quantity)) || 0).toFixed(2)}
+                    ${(Number(item.subTotal ?? item.subtotal ?? (item.price * item.quantity)) || 0).toFixed(2)}
                   </span>
 
                   <button

@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-partner/*/status").hasRole("DELIVERY")
 
                         // 3. Customer Cart and Order endpoints
-                        .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/cart", "/api/cart/**").hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.POST, "/api/orders/checkout").hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.GET, "/api/orders/my-orders").hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.GET, "/api/orders/customer/**").hasRole("CUSTOMER")

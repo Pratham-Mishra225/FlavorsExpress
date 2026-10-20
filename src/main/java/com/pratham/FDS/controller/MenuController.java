@@ -38,15 +38,17 @@ public class MenuController {
 
     @GetMapping
     @Operation(summary = "Get all menu items (paginated + filtered)",
-               description = "Public endpoint. Supports pagination, sorting, full-text search, and vegetarian filtering.")
+               description = "Public endpoint. Supports pagination, sorting, full-text search, category, and vegetarian filtering.")
     public ResponseEntity<PagedResponse<MenuItemDTO>> getAllMenuItems(
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "12") int size,
             @Parameter(description = "Sort field") @RequestParam(defaultValue = "name") String sortBy,
             @Parameter(description = "Sort direction: asc or desc") @RequestParam(defaultValue = "asc") String sortDir,
             @Parameter(description = "Search term for name/description") @RequestParam(required = false) String search,
-            @Parameter(description = "Filter by vegetarian flag") @RequestParam(required = false) Boolean isVegetarian) {
-        return ResponseEntity.ok(menuService.getAllMenuItems(page, size, sortBy, sortDir, search, isVegetarian));
+            @Parameter(description = "Filter by vegetarian flag") @RequestParam(required = false) Boolean isVegetarian,
+            @Parameter(description = "Filter by category ID") @RequestParam(required = false) Long categoryId,
+            @Parameter(description = "Filter available only") @RequestParam(required = false) Boolean availableOnly) {
+        return ResponseEntity.ok(menuService.getAllMenuItems(page, size, sortBy, sortDir, search, isVegetarian, categoryId, availableOnly));
     }
 
     @GetMapping("/category/{categoryId}")

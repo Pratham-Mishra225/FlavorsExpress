@@ -20,7 +20,7 @@ const Checkout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const cartItems = cart?.cartItems || [];
+  const cartItems = cart?.cartItems || cart?.items || [];
   const subtotal = cart?.totalAmount ?? cart?.subtotal ?? 0;
   const finalTotal = Math.max(0, subtotal - discount);
 
@@ -188,8 +188,8 @@ const Checkout = () => {
           <div className="space-y-3 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
             {cartItems.map((item) => (
               <div key={item.id} className="flex justify-between text-xs text-slate-300">
-                <span className="truncate max-w-[140px] font-medium">{item.menuItemName} (x{item.quantity})</span>
-                <span className="font-bold text-slate-100">${(Number(item.subTotal ?? (item.price * item.quantity)) || 0).toFixed(2)}</span>
+                <span className="truncate max-w-[140px] font-medium">{(item.name || item.menuItemName)} (x{item.quantity})</span>
+                <span className="font-bold text-slate-100">${(Number(item.subTotal ?? item.subtotal ?? (item.price * item.quantity)) || 0).toFixed(2)}</span>
               </div>
             ))}
           </div>

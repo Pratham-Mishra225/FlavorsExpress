@@ -7,6 +7,7 @@ import com.pratham.FDS.entity.Cart;
 import com.pratham.FDS.entity.CartItem;
 import com.pratham.FDS.entity.Customer;
 import com.pratham.FDS.entity.MenuItem;
+import com.pratham.FDS.exception.BadRequestException;
 import com.pratham.FDS.exception.ResourceNotFoundException;
 import com.pratham.FDS.mapper.CartItemMapper;
 import com.pratham.FDS.repository.CartItemRepository;
@@ -91,23 +92,39 @@ public class CartServiceImpl implements CartService {
     public CartDTO addItem(Long customerId, CartItemRequest request) {
         log.info("Adding menuItem {} to cart for customer {}", request.getMenuItemId(), customerId);
 
+        if (request.getMenuItemId() == null) {
+            throw new BadRequestException("Menu item ID is required");
+        }
+        if (request.getQuantity() == null || request.getQuantity() <= 0) {
+            throw new BadRequestException("Quantity must be greater than zero");
+        }
+        if (request.getQuantity() > 99) {
+            throw new BadRequestException("Quantity cannot exceed 99");
+        }
+
         Cart cart = getOrCreateCart(customerId);
 
         MenuItem menuItem = menuRepository.findById(request.getMenuItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("MenuItem", "id", request.getMenuItemId()));
+
+        if (!Boolean.TRUE.equals(menuItem.getIsAvailable())) {
+            throw new BadRequestException("Menu item '" + menuItem.getName() + "' is currently unavailable");
+        }
 
         // Check if this menu item already exists in the cart
         Optional<CartItem> existingItem = cartItemRepository
                 .findByCartIdAndMenuItemId(cart.getId(), menuItem.getId());
 
         if (existingItem.isPresent()) {
-            // Increment quantity
             CartItem cartItem = existingItem.get();
-            cartItem.setQuantity(cartItem.getQuantity() + request.getQuantity());
+            int newQuantity = cartItem.getQuantity() + request.getQuantity();
+            if (newQuantity > 99) {
+                throw new BadRequestException("Maximum quantity of 99 reached for item: " + menuItem.getName());
+            }
+            cartItem.setQuantity(newQuantity);
             cartItemRepository.save(cartItem);
             log.info("Incremented quantity for cartItem {} to {}", cartItem.getId(), cartItem.getQuantity());
         } else {
-            // Create new CartItem
             CartItem newCartItem = CartItem.builder()
                     .cart(cart)
                     .menuItem(menuItem)
@@ -118,10 +135,7 @@ public class CartServiceImpl implements CartService {
             log.info("Created new cartItem for menuItem {}", menuItem.getId());
         }
 
-        // Reload cart to reflect latest state
-        Cart updatedCart = cartRepository.findById(cart.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Cart", "id", cart.getId()));
-        return buildCartDTO(updatedCart);
+        return buildCartDTO(cart);
     }
 
     // -------------------------------------------------------
@@ -130,6 +144,13 @@ public class CartServiceImpl implements CartService {
     @Override
     public CartDTO updateItemQuantity(Long customerId, Long cartItemId, CartItemRequest request) {
         log.info("Updating cartItem {} quantity to {} for customer {}", cartItemId, request.getQuantity(), customerId);
+
+        if (request.getQuantity() == null || request.getQuantity() <= 0) {
+            throw new BadRequestException("Quantity must be greater than zero");
+        }
+        if (request.getQuantity() > 99) {
+            throw new BadRequestException("Quantity cannot exceed 99");
+        }
 
         Cart cart = getOrCreateCart(customerId);
 
@@ -145,9 +166,7 @@ public class CartServiceImpl implements CartService {
         cartItemRepository.save(cartItem);
         log.info("Updated cartItem {} quantity to {}", cartItemId, request.getQuantity());
 
-        Cart updatedCart = cartRepository.findById(cart.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Cart", "id", cart.getId()));
-        return buildCartDTO(updatedCart);
+        return buildCartDTO(cart);
     }
 
     // -------------------------------------------------------
@@ -167,12 +186,11 @@ public class CartServiceImpl implements CartService {
             throw new ResourceNotFoundException("CartItem", "id", cartItemId);
         }
 
+        cart.getCartItems().removeIf(item -> item.getId().equals(cartItemId));
         cartItemRepository.delete(cartItem);
         log.info("Removed cartItem {} from cart {}", cartItemId, cart.getId());
 
-        Cart updatedCart = cartRepository.findById(cart.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Cart", "id", cart.getId()));
-        return buildCartDTO(updatedCart);
+        return buildCartDTO(cart);
     }
 
     // -------------------------------------------------------
@@ -184,6 +202,7 @@ public class CartServiceImpl implements CartService {
 
         Cart cart = getOrCreateCart(customerId);
         List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+        cart.getCartItems().clear();
         cartItemRepository.deleteAll(items);
         log.info("Cleared {} items from cart {}", items.size(), cart.getId());
     }

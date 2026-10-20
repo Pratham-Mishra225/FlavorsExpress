@@ -17,11 +17,49 @@ public class CartController {
     private final CartService cartService;
     private final SecurityUtils securityUtils;
 
+    // GET /api/cart — Get own cart directly from authenticated principal
+    @GetMapping
+    public ResponseEntity<CartDTO> getCurrentUserCart() {
+        Long currentCustomerId = securityUtils.getCurrentCustomer().getId();
+        return ResponseEntity.ok(cartService.getCart(currentCustomerId));
+    }
+
     // GET /api/cart/my-cart — Get own cart directly from authenticated principal
     @GetMapping("/my-cart")
     public ResponseEntity<CartDTO> getMyCart() {
         Long currentCustomerId = securityUtils.getCurrentCustomer().getId();
         return ResponseEntity.ok(cartService.getCart(currentCustomerId));
+    }
+
+    // POST /api/cart/items — Add item directly for current authenticated customer
+    @PostMapping("/items")
+    public ResponseEntity<CartDTO> addCurrentUserItem(@Valid @RequestBody CartItemRequest request) {
+        Long currentCustomerId = securityUtils.getCurrentCustomer().getId();
+        return ResponseEntity.ok(cartService.addItem(currentCustomerId, request));
+    }
+
+    // PUT /api/cart/items/{cartItemId} — Update quantity directly for current authenticated customer
+    @PutMapping("/items/{cartItemId}")
+    public ResponseEntity<CartDTO> updateCurrentUserItemQuantity(
+            @PathVariable Long cartItemId,
+            @Valid @RequestBody CartItemRequest request) {
+        Long currentCustomerId = securityUtils.getCurrentCustomer().getId();
+        return ResponseEntity.ok(cartService.updateItemQuantity(currentCustomerId, cartItemId, request));
+    }
+
+    // DELETE /api/cart/items/{cartItemId} — Remove a single item directly for current customer
+    @DeleteMapping("/items/{cartItemId}")
+    public ResponseEntity<CartDTO> removeCurrentUserItem(@PathVariable Long cartItemId) {
+        Long currentCustomerId = securityUtils.getCurrentCustomer().getId();
+        return ResponseEntity.ok(cartService.removeItem(currentCustomerId, cartItemId));
+    }
+
+    // DELETE /api/cart — Clear cart directly for current customer
+    @DeleteMapping
+    public ResponseEntity<Void> clearCurrentUserCart() {
+        Long currentCustomerId = securityUtils.getCurrentCustomer().getId();
+        cartService.clearCart(currentCustomerId);
+        return ResponseEntity.noContent().build();
     }
 
     // GET /api/cart/{customerId} — Get cart with items and subtotal (verifying caller owns customerId)

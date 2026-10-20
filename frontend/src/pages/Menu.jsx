@@ -29,6 +29,7 @@ const Menu = () => {
       });
       if (searchQuery.trim()) params.append('search', searchQuery.trim());
       if (vegFilter !== null) params.append('isVegetarian', vegFilter);
+      if (selectedCategory !== null) params.append('categoryId', selectedCategory);
 
       const res = await api.get(`/menu-items?${params.toString()}`);
       setPagedData(res.data);
@@ -38,7 +39,7 @@ const Menu = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery, vegFilter]);
+  }, [page, searchQuery, vegFilter, selectedCategory]);
 
   useEffect(() => {
     api.get('/categories').then(r => setCategories(r.data)).catch(console.error);
@@ -46,7 +47,7 @@ const Menu = () => {
 
   useEffect(() => {
     setPage(0); // reset to first page when filters change
-  }, [searchQuery, vegFilter]);
+  }, [searchQuery, vegFilter, selectedCategory]);
 
   useEffect(() => {
     fetchMenuItems();
@@ -60,10 +61,8 @@ const Menu = () => {
     }
   };
 
-  // Client-side category filter applied on top of server-side results
-  const filteredItems = selectedCategory
-    ? pagedData.content.filter(item => item.categoryId === selectedCategory)
-    : pagedData.content;
+  // Server-side filtered items with complete pagination accuracy
+  const filteredItems = pagedData.content || [];
 
   return (
     <div className="space-y-8 pb-16">

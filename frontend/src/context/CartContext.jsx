@@ -72,13 +72,14 @@ export const CartProvider = ({ children }) => {
     if (!user) return;
     try {
       await api.delete(`/cart/${user.id}`);
-      setCart({ cartItems: [], totalAmount: 0 });
+      setCart({ cartItems: [], items: [], totalAmount: 0, subtotal: 0 });
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to clear cart.');
     }
   };
 
-  const itemCount = cart?.cartItems?.reduce((total, item) => total + item.quantity, 0) || 0;
+  const items = cart?.cartItems || cart?.items || [];
+  const itemCount = items.reduce((total, item) => total + (item.quantity || 0), 0);
 
   return (
     <CartContext.Provider value={{ cart, loading, error, itemCount, fetchCart, addToCart, updateQuantity, removeFromCart, clearCart }}>

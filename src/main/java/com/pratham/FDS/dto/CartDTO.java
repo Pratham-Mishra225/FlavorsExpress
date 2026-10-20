@@ -29,4 +29,14 @@ public class CartDTO {
 
     @Builder.Default
     private BigDecimal totalAmount = BigDecimal.ZERO;
+
+    public List<CartItemDTO> getItems() {
+        return cartItems;
+    }
+
+    public void setItems(List<CartItemDTO> items) {
+        if (items != null) {
+            this.cartItems = items;
+        }
+    }
 }

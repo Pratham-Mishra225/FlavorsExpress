@@ -65,17 +65,31 @@ public class MenuServiceImpl implements MenuService {
     @Transactional(readOnly = true)
     public PagedResponse<MenuItemDTO> getAllMenuItems(
             int page, int size, String sortBy, String sortDir, String search, Boolean isVegetarian) {
-        log.info("Fetching menu items with pagination - page: {}, size: {}, sortBy: {}, sortDir: {}, search: {}, isVegetarian: {}",
-                page, size, sortBy, sortDir, search, isVegetarian);
-        
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? 
-                Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        return getAllMenuItems(page, size, sortBy, sortDir, search, isVegetarian, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<MenuItemDTO> getAllMenuItems(
+            int page, int size, String sortBy, String sortDir, String search, Boolean isVegetarian, Long categoryId, Boolean availableOnly) {
+        log.info("Fetching menu items with pagination - page: {}, size: {}, sortBy: {}, sortDir: {}, search: {}, isVegetarian: {}, categoryId: {}, availableOnly: {}",
+                page, size, sortBy, sortDir, search, isVegetarian, categoryId, availableOnly);
+
+        // Sanitize sort parameters against whitelist
+        List<String> allowedSortFields = List.of("id", "name", "price", "createdAt", "preparationTimeMinutes", "isVegetarian");
+        String safeSortBy = (sortBy != null && allowedSortFields.contains(sortBy)) ? sortBy : "name";
+        Sort.Direction direction = (sortDir != null && sortDir.equalsIgnoreCase("desc")) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sort = Sort.by(direction, safeSortBy);
+
+        // Sanitize pagination bounds
+        int safePage = Math.max(0, page);
+        int safeSize = (size <= 0) ? 12 : Math.min(size, 100);
+        Pageable pageable = PageRequest.of(safePage, safeSize, sort);
 
         // Normalize empty search string to null
         String searchQuery = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        Page<MenuItem> menuItemsPage = menuRepository.findByFilters(searchQuery, isVegetarian, pageable);
+        Page<MenuItem> menuItemsPage = menuRepository.findByFilters(searchQuery, isVegetarian, categoryId, availableOnly, pageable);
 
         List<MenuItemDTO> content = menuItemsPage.getContent()
                 .stream()

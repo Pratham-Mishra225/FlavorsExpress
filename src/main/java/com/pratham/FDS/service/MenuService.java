@@ -15,6 +15,9 @@ public interface MenuService {
     com.pratham.FDS.dto.PagedResponse<MenuItemDTO> getAllMenuItems(
             int page, int size, String sortBy, String sortDir, String search, Boolean isVegetarian);
 
+    com.pratham.FDS.dto.PagedResponse<MenuItemDTO> getAllMenuItems(
+            int page, int size, String sortBy, String sortDir, String search, Boolean isVegetarian, Long categoryId, Boolean availableOnly);
+
     List<MenuItemDTO> getMenuItemsByCategory(Long categoryId);
 
     MenuItemDTO updateMenuItem(Long id, MenuItemDTO menuItemDTO);
