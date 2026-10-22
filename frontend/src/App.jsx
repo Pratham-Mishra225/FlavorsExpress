@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -22,11 +23,12 @@ import DeliveryDashboard from './pages/DeliveryDashboard';
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <CartProvider>
-          <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 font-sans">
-            <Navbar />
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <ThemeProvider>
+        <AuthProvider>
+          <CartProvider>
+            <div className="flex flex-col min-h-screen bg-[#fdfbf7] dark:bg-slate-950 text-slate-850 dark:text-slate-100 font-sans transition-colors duration-200">
+              <Navbar />
+              <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
@@ -88,6 +90,7 @@ function App() {
           </div>
         </CartProvider>
       </AuthProvider>
+    </ThemeProvider>
     </Router>
   );
 }

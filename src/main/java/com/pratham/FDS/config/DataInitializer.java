@@ -53,195 +53,112 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedMenuData() {
-        if (categoryRepository.count() > 0 || menuRepository.count() > 0) {
-            log.info("Menu data already exists ({} categories, {} items). Skipping seed data generation.",
-                    categoryRepository.count(), menuRepository.count());
+        Category pizzaCat = categoryRepository.findByName("Pizzas & Breads")
+                .orElseGet(() -> categoryRepository.save(Category.builder()
+                        .name("Pizzas & Breads")
+                        .description("Artisanal hand-stretched pizzas and fresh oven-baked breads")
+                        .build()));
+
+        Category burgerCat = categoryRepository.findByName("Burgers & Sandwiches")
+                .orElseGet(() -> categoryRepository.save(Category.builder()
+                        .name("Burgers & Sandwiches")
+                        .description("Juicy gourmet burgers and toasted chef-special sandwiches")
+                        .build()));
+
+        Category mainCat = categoryRepository.findByName("Main Course")
+                .orElseGet(() -> categoryRepository.save(Category.builder()
+                        .name("Main Course")
+                        .description("Traditional entrees, aromatic curries, and fragrant rice bowls")
+                        .build()));
+
+        Category starterCat = categoryRepository.findByName("Starters & Appetizers")
+                .orElseGet(() -> categoryRepository.save(Category.builder()
+                        .name("Starters & Appetizers")
+                        .description("Crispy snacks, seasoned fries, and savory finger foods")
+                        .build()));
+
+        Category dessertCat = categoryRepository.findByName("Desserts & Beverages")
+                .orElseGet(() -> categoryRepository.save(Category.builder()
+                        .name("Desserts & Beverages")
+                        .description("Freshly crafted desserts, coolers, and refreshing drinks")
+                        .build()));
+
+        // Check if existing items have USD-style prices (under 40.00) or if database is empty
+        boolean needsIndianMenu = menuRepository.count() == 0 ||
+                menuRepository.findAll().stream().anyMatch(m -> m.getPrice().compareTo(new BigDecimal("40.00")) < 0);
+
+        if (!needsIndianMenu) {
+            log.info("Indian fast-food menu already configured with INR pricing ({} items). Skipping seed.", menuRepository.count());
             return;
         }
 
-        log.info("No menu items found in database. Initializing sample menu for local development...");
+        log.info("Configuring authentic Indian fast-food menu with realistic INR prices...");
 
-        // 1. Pizzas & Breads
-        Category pizzaCat = categoryRepository.save(Category.builder()
-                .name("Pizzas & Breads")
-                .description("Artisanal hand-stretched pizzas and fresh oven-baked breads")
-                .build());
+        // Map of target items
+        record ItemSeed(String name, String desc, BigDecimal price, boolean isVeg, int prepTime, Category cat) {}
+        List<ItemSeed> targetItems = List.of(
+                // 1. Pizzas & Breads
+                new ItemSeed("Tandoori Paneer Pizza", "Hand-stretched crust topped with spicy marinated paneer, capsicum, red onion, and mozzarella blend.", new BigDecimal("279.00"), true, 20, pizzaCat),
+                new ItemSeed("Mumbai Masala Pizza", "Spiced potato-corn masala, green chutney swirl, crunchy bell peppers, and melted cheese.", new BigDecimal("249.00"), true, 18, pizzaCat),
+                new ItemSeed("Masala Garlic Bread", "Crispy toasted French baguette brushed with garlic-herb butter and spiced chilli cheese.", new BigDecimal("129.00"), true, 12, pizzaCat),
 
-        menuRepository.saveAll(List.of(
-                MenuItem.builder()
-                        .name("Margherita Pizza")
-                        .description("San Marzano tomato sauce, fresh mozzarella, aromatic basil, and extra virgin olive oil.")
-                        .price(new BigDecimal("12.99"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(20)
-                        .category(pizzaCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Pepperoni Feast Pizza")
-                        .description("Loaded with artisanal spiced beef pepperoni, mozzarella blend, and signature herb tomato sauce.")
-                        .price(new BigDecimal("15.99"))
-                        .isVegetarian(false)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(22)
-                        .category(pizzaCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Garlic Herb Breadsticks")
-                        .description("Warm parmesan-crusted breadsticks served with house marinara dip.")
-                        .price(new BigDecimal("6.49"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(12)
-                        .category(pizzaCat)
-                        .build()
-        ));
+                // 2. Burgers & Sandwiches
+                new ItemSeed("Mumbai Vada Pav", "Authentic spiced potato batata vada in a soft pav with dry garlic-peanut chutney and fried green chilli.", new BigDecimal("69.00"), true, 8, burgerCat),
+                new ItemSeed("Crispy Paneer Burger", "Golden batter-fried cottage cheese steak, mint mayo, crunchy lettuce, and garden tomatoes.", new BigDecimal("189.00"), true, 14, burgerCat),
+                new ItemSeed("Aloo Tikki Burger", "Crisp spiced potato patty, tangy tamarind glaze, sliced onions, and cool mint yogurt sauce.", new BigDecimal("119.00"), true, 12, burgerCat),
+                new ItemSeed("Chicken Tikka Burger", "Char-grilled smoky chicken tikka patty, tandoori spread, pickled onions, and melted cheese.", new BigDecimal("229.00"), false, 15, burgerCat),
+                new ItemSeed("Masala Grilled Sandwich", "Triple-layer toasted sandwich stuffed with spiced potatoes, beetroot, cucumber, mint chutney, and Amul cheese.", new BigDecimal("149.00"), true, 10, burgerCat),
 
-        // 2. Burgers & Sandwiches
-        Category burgerCat = categoryRepository.save(Category.builder()
-                .name("Burgers & Sandwiches")
-                .description("Juicy gourmet burgers and toasted chef-special sandwiches")
-                .build());
+                // 3. Main Course
+                new ItemSeed("Butter Chicken with Naan", "Tender chicken roasted in clay tandoor and simmered in a velvety tomato-butter gravy with butter naan.", new BigDecimal("349.00"), false, 25, mainCat),
+                new ItemSeed("Paneer Tikka Rice Bowl", "Char-grilled spiced paneer cubes over fragrant cumin basmati rice with pickled onions and mint chutney.", new BigDecimal("249.00"), true, 20, mainCat),
+                new ItemSeed("Hyderabadi Chicken Biryani", "Slow-cooked aromatic basmati rice layered with spiced marinated chicken, saffron, and cooling raita.", new BigDecimal("299.00"), false, 25, mainCat),
+                new ItemSeed("Veg Biryani Bowl", "Dum-cooked long-grain basmati rice with garden vegetables, paneer, aromatic herbs, and roasted cashews.", new BigDecimal("219.00"), true, 20, mainCat),
+                new ItemSeed("Chole Kulcha Meal", "Authentic Delhi-style spiced chickpea curry served with two soft buttered kulchas and tangy pickled onions.", new BigDecimal("179.00"), true, 15, mainCat),
 
-        menuRepository.saveAll(List.of(
-                MenuItem.builder()
-                        .name("Classic Smash Cheeseburger")
-                        .description("Double smashed beef patty, aged cheddar, pickles, grilled onions, and secret house sauce.")
-                        .price(new BigDecimal("11.49"))
-                        .isVegetarian(false)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(15)
-                        .category(burgerCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Crispy Paneer Burger")
-                        .description("Golden batter-fried cottage cheese steak, mint mayo, crunchy lettuce, and garden tomatoes.")
-                        .price(new BigDecimal("9.99"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(14)
-                        .category(burgerCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Smoked BBQ Bacon Burger")
-                        .description("Prime beef patty, smoked bacon, gouda cheese, crispy onion rings, and tangy BBQ glaze.")
-                        .price(new BigDecimal("13.99"))
-                        .isVegetarian(false)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(18)
-                        .category(burgerCat)
-                        .build()
-        ));
+                // 4. Starters & Appetizers
+                new ItemSeed("Peri-Peri Fries", "Crispy golden shoestring fries tossed in fiery peri-peri seasoning and served with garlic dip.", new BigDecimal("119.00"), true, 10, starterCat),
+                new ItemSeed("Pav Bhaji", "Rich and spicy mashed vegetable curry simmered with butter and spices, served with two toasted pav.", new BigDecimal("169.00"), true, 12, starterCat),
+                new ItemSeed("Spicy Chicken Kathi Roll", "Flaky paratha wrapped around succulent marinated chicken tikka, sliced peppers, and mint chutney.", new BigDecimal("199.00"), false, 14, starterCat),
+                new ItemSeed("Crispy Corn Bhel", "Golden crispy sweet corn kernels tossed with fresh herbs, lime, pomegranate, and tangy chaat spices.", new BigDecimal("129.00"), true, 8, starterCat),
 
-        // 3. Main Course
-        Category mainCat = categoryRepository.save(Category.builder()
-                .name("Main Course")
-                .description("Traditional entrees, aromatic curries, and fragrant rice bowls")
-                .build());
+                // 5. Desserts & Beverages
+                new ItemSeed("Mango Lassi", "Thick and creamy chilled yogurt blended with sweet Alphonso mango pulp and a touch of cardamom.", new BigDecimal("89.00"), true, 5, dessertCat),
+                new ItemSeed("Masala Chai", "Freshly brewed strong Indian milk tea infused with crushed ginger, green cardamom, and aromatic spices.", new BigDecimal("49.00"), true, 5, dessertCat),
+                new ItemSeed("Gulab Jamun (2 pcs)", "Soft golden-brown cottage cheese dumplings soaked in warm saffron and cardamom sugar syrup.", new BigDecimal("79.00"), true, 5, dessertCat),
+                new ItemSeed("Molten Chocolate Lava Cake", "Warm dark chocolate cake with a gooey melting ganache center, dusted with powdered sugar.", new BigDecimal("149.00"), true, 10, dessertCat),
+                new ItemSeed("Cold Coffee with Ice Cream", "Rich blended espresso cold coffee topped with a creamy scoop of vanilla ice cream.", new BigDecimal("119.00"), true, 5, dessertCat)
+        );
 
-        menuRepository.saveAll(List.of(
-                MenuItem.builder()
-                        .name("Butter Chicken with Naan")
-                        .description("Tender chicken roasted in clay tandoor and simmered in a velvety tomato-butter gravy.")
-                        .price(new BigDecimal("16.99"))
-                        .isVegetarian(false)
+        List<MenuItem> existingList = menuRepository.findAll();
+        for (int i = 0; i < targetItems.size(); i++) {
+            ItemSeed seed = targetItems.get(i);
+            if (i < existingList.size()) {
+                // Update existing record in-place to preserve foreign key references
+                MenuItem item = existingList.get(i);
+                item.setName(seed.name());
+                item.setDescription(seed.desc());
+                item.setPrice(seed.price());
+                item.setIsVegetarian(seed.isVeg());
+                item.setPreparationTimeMinutes(seed.prepTime());
+                item.setCategory(seed.cat());
+                item.setIsAvailable(true);
+                menuRepository.save(item);
+            } else {
+                // Create new record
+                MenuItem item = MenuItem.builder()
+                        .name(seed.name())
+                        .description(seed.desc())
+                        .price(seed.price())
+                        .isVegetarian(seed.isVeg())
                         .isAvailable(true)
-                        .preparationTimeMinutes(25)
-                        .category(mainCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Paneer Tikka Masala")
-                        .description("Char-grilled spiced paneer cubes simmered in a rich onion-tomato sauce with basmati rice.")
-                        .price(new BigDecimal("14.49"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(20)
-                        .category(mainCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Hyderabadi Chicken Biryani")
-                        .description("Slow-cooked aromatic basmati rice layered with spiced marinated chicken, saffron, and mint.")
-                        .price(new BigDecimal("15.49"))
-                        .isVegetarian(false)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(25)
-                        .category(mainCat)
-                        .build()
-        ));
-
-        // 4. Starters & Appetizers
-        Category starterCat = categoryRepository.save(Category.builder()
-                .name("Starters & Appetizers")
-                .description("Crispy snacks, seasoned fries, and savory finger foods")
-                .build());
-
-        menuRepository.saveAll(List.of(
-                MenuItem.builder()
-                        .name("Truffle Parmesan Fries")
-                        .description("Crispy shoestring fries tossed in white truffle oil, freshly shaved parmesan, and parsley.")
-                        .price(new BigDecimal("6.99"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(10)
-                        .category(starterCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Spicy Buffalo Wings")
-                        .description("Crispy bone-in chicken wings tossed in fiery cayenne pepper sauce with cooling ranch dip.")
-                        .price(new BigDecimal("9.99"))
-                        .isVegetarian(false)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(15)
-                        .category(starterCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Crispy Corn Bhel")
-                        .description("Golden crispy sweet corn kernels tossed with fresh herbs, lime, and tangy chaat spices.")
-                        .price(new BigDecimal("5.99"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(8)
-                        .category(starterCat)
-                        .build()
-        ));
-
-        // 5. Desserts & Beverages
-        Category dessertCat = categoryRepository.save(Category.builder()
-                .name("Desserts & Beverages")
-                .description("Freshly crafted desserts, coolers, and refreshing drinks")
-                .build());
-
-        menuRepository.saveAll(List.of(
-                MenuItem.builder()
-                        .name("Molten Chocolate Lava Cake")
-                        .description("Warm dark chocolate cake with a gooey melting ganache center, dusted with powdered sugar.")
-                        .price(new BigDecimal("6.99"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(10)
-                        .category(dessertCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("Mango Mint Cooler")
-                        .description("Chilled sweet Alphonso mango puree with crushed fresh mint leaves, lime, and sparkling soda.")
-                        .price(new BigDecimal("4.49"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(5)
-                        .category(dessertCat)
-                        .build(),
-                MenuItem.builder()
-                        .name("New York Cheesecake")
-                        .description("Silky smooth baked cream cheese over a buttery graham cracker crust with strawberry coulis.")
-                        .price(new BigDecimal("7.49"))
-                        .isVegetarian(true)
-                        .isAvailable(true)
-                        .preparationTimeMinutes(5)
-                        .category(dessertCat)
-                        .build()
-        ));
-
-        log.info("Successfully seeded 5 categories and 15 signature menu items.");
+                        .preparationTimeMinutes(seed.prepTime())
+                        .category(seed.cat())
+                        .build();
+                menuRepository.save(item);
+            }
+        }
+        log.info("Successfully configured {} Indian fast-food menu items with INR pricing.", targetItems.size());
     }
 
     private void seedDeliveryPartners() {
@@ -276,21 +193,29 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedPromoCodes() {
-        if (promoCodeRepository.count() > 0) {
+        var promoOpt = promoCodeRepository.findByCode("WELCOME20");
+        if (promoOpt.isPresent()) {
+            PromoCode promo = promoOpt.get();
+            if (promo.getMaxDiscountAmount().compareTo(new BigDecimal("20.00")) <= 0) {
+                promo.setMaxDiscountAmount(new BigDecimal("100.00"));
+                promo.setMinOrderAmount(new BigDecimal("299.00"));
+                promoCodeRepository.save(promo);
+                log.info("Updated WELCOME20 promo code limits to realistic INR values (max ₹100, min ₹299).");
+            }
             return;
         }
 
         promoCodeRepository.save(PromoCode.builder()
                 .code("WELCOME20")
                 .discountPercentage(new BigDecimal("20.00"))
-                .maxDiscountAmount(new BigDecimal("10.00"))
-                .minOrderAmount(new BigDecimal("15.00"))
+                .maxDiscountAmount(new BigDecimal("100.00"))
+                .minOrderAmount(new BigDecimal("299.00"))
                 .isActive(true)
                 .expiryDate(LocalDateTime.now().plusYears(1))
                 .usageLimit(500)
                 .usedCount(0)
                 .build());
 
-        log.info("Seeded WELCOME20 promo code.");
+        log.info("Seeded WELCOME20 promo code with realistic INR limits.");
     }
 }

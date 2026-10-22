@@ -145,7 +145,12 @@ public class OrderLifecycleIntegrationTest {
                 .role(UserRole.ADMIN)
                 .build());
 
-        // 4. Delivery Partners
+        // 4. Delivery Partners: Mark existing database partners offline so test partners are isolated
+        deliveryPartnerRepository.findAll().forEach(p -> {
+            p.setStatus(DeliveryPartnerStatus.OFFLINE);
+            deliveryPartnerRepository.save(p);
+        });
+
         courierUserA = customerRepository.save(Customer.builder()
                 .name("Rider Dave")
                 .email("dave_" + nano + "@test.com")
