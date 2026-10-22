@@ -52,7 +52,8 @@ public class SecurityConfig {
                         // 2. Delivery Partner specific endpoints
                         .requestMatchers("/api/delivery-partners/me/**").hasRole("DELIVERY")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-status").hasRole("DELIVERY")
-                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-partner/*/status").hasRole("DELIVERY")
+                        // Partner identity is always server-derived; the URL no longer accepts an arbitrary partnerId
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/delivery-partner/me/status").hasRole("DELIVERY")
 
                         // 3. Customer Cart and Order endpoints
                         .requestMatchers("/api/cart", "/api/cart/**").hasRole("CUSTOMER")

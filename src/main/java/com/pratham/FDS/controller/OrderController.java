@@ -105,12 +105,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.updateDeliveryStatus(id, partner.getId(), status));
     }
 
-    @PutMapping("/{id}/delivery-partner/{partnerId}/status")
-    @Operation(summary = "Delivery partner updates order status", description = "Delivery partner only.")
-    public ResponseEntity<OrderDTO> updateDeliveryStatus(
+    @PutMapping("/{id}/delivery-partner/me/status")
+    @Operation(summary = "Delivery partner updates order status (server-derived partner identity)", description = "Delivery partner only. Identity always derived from JWT principal.")
+    public ResponseEntity<OrderDTO> updateDeliveryStatusMe(
             @PathVariable Long id,
-            @PathVariable Long partnerId,
             @RequestParam OrderStatus status) {
-        return ResponseEntity.ok(orderService.updateDeliveryStatus(id, partnerId, status));
+        var partner = securityUtils.getCurrentDeliveryPartner();
+        return ResponseEntity.ok(orderService.updateDeliveryStatus(id, partner.getId(), status));
     }
 }

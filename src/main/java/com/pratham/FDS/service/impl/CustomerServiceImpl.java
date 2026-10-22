@@ -78,7 +78,8 @@ public class CustomerServiceImpl implements CustomerService {
         existingCustomer.setName(customerDTO.getName());
         existingCustomer.setEmail(customerDTO.getEmail());
         existingCustomer.setPhone(customerDTO.getPhone());
-        existingCustomer.setRole(customerDTO.getRole());
+        // Role is immutable via the customer update API; always preserve the persisted role
+        // to prevent privilege escalation through a crafted DTO payload.
 
         Customer updatedCustomer = customerRepository.save(existingCustomer);
         log.info("Customer updated successfully with ID: {}", updatedCustomer.getId());

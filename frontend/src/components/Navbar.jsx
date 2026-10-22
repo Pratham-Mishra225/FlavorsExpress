@@ -122,7 +122,7 @@ const Navbar = () => {
                     user.role === 'DELIVERY_PARTNER' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
                     'bg-orange-500/20 text-orange-300 border border-orange-500/30'
                   }`}>
-                    {user.role === 'DELIVERY_PARTNER' ? 'DELIVERY' : user.role}
+                    {user.role === 'DELIVERY_PARTNER' ? 'DELIVERY' : user.role === 'ADMIN' ? 'ADMIN' : 'CUSTOMER'}
                   </span>
                 </div>
                 <button

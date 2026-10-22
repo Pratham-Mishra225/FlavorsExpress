@@ -51,8 +51,8 @@ const Register = () => {
           <div className="w-14 h-14 bg-gradient-to-tr from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-500/30">
             <UserPlus className="w-7 h-7 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Create an Account</h2>
-          <p className="text-sm text-slate-400 mt-1">Join FlavorsExpress today</p>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Create a Customer Account</h2>
+          <p className="text-sm text-slate-400 mt-1">Join FlavorsExpress — browse, order &amp; track deliveries</p>
         </div>
 
         {error && (
@@ -150,12 +150,16 @@ const Register = () => {
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
+        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center space-y-2">
           <p className="text-sm text-slate-400">
             Already have an account?{' '}
             <Link to="/login" className="font-semibold text-orange-400 hover:text-orange-300 transition-colors">
               Sign In
             </Link>
+          </p>
+          <p className="text-[11px] text-slate-600">
+            This form creates a <strong className="text-slate-500">Customer</strong> account only.
+            Admin &amp; Delivery Partner accounts are provisioned by a system administrator.
           </p>
         </div>
 
