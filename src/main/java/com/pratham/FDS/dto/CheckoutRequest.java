@@ -15,7 +15,7 @@ import lombok.*;
 @Builder
 public class CheckoutRequest {
 
-    @NotNull(message = "Customer ID is required")
+    // Derived server-side from JWT authentication
     private Long customerId;
 
     @NotBlank(message = "Delivery address is required")

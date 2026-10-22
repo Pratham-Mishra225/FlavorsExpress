@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/orders/*").authenticated()
 
                         // 5. Admin Order and Dispatch endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/orders").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/orders/status/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/assign-automatic").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/assign-manual/**").hasRole("ADMIN")

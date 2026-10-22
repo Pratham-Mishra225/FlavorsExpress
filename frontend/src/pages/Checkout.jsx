@@ -7,7 +7,7 @@ import { MapPin, ShoppingBag, ArrowRight, AlertCircle, Tag, X, Check, Clock } fr
 
 const Checkout = () => {
   const { user } = useAuth();
-  const { cart, clearCart } = useCart();
+  const { cart, fetchCart, clearCart } = useCart();
   const navigate = useNavigate();
 
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -65,12 +65,19 @@ const Checkout = () => {
 
     try {
       setSubmitting(true);
-      await api.post('/orders/checkout', {
-        customerId: user.id,
+      const res = await api.post('/orders/checkout', {
+        customerId: user?.id,
         deliveryAddress: deliveryAddress.trim(),
         promoCode: promoApplied ? promoCode : null,
       });
-      navigate('/orders');
+      // Immediately refresh cart state so cart badge & cached state are cleared
+      await fetchCart();
+      navigate('/orders', {
+        state: {
+          placedOrderId: res.data?.id,
+          successMessage: `Order #${res.data?.id} successfully placed!`,
+        },
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Checkout failed. Please try again.');
     } finally {

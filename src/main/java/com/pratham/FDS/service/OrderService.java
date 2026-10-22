@@ -18,6 +18,8 @@ public interface OrderService {
 
     List<OrderDTO> getOrdersByStatus(OrderStatus status);
 
+    List<OrderDTO> getAllOrders();
+
     OrderDTO assignDeliveryPartnerAutomatically(Long orderId);
 
     OrderDTO assignDeliveryPartnerManually(Long orderId, Long partnerId);

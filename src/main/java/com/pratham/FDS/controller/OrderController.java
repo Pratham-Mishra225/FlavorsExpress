@@ -68,6 +68,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrdersByCustomer(customerId, page, size, sortBy, sortDir));
     }
 
+    @GetMapping
+    @Operation(summary = "Get all orders", description = "Admin only.")
+    public ResponseEntity<List<OrderDTO>> getAllOrders() {
+        return ResponseEntity.ok(orderService.getAllOrders());
+    }
+
     @GetMapping("/status/{status}")
     @Operation(summary = "Get orders by status", description = "Admin only.")
     public ResponseEntity<List<OrderDTO>> getOrdersByStatus(@PathVariable OrderStatus status) {

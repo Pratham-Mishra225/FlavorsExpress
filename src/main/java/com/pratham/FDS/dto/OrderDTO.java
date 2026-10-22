@@ -24,7 +24,15 @@ public class OrderDTO {
     @NotNull(message = "Customer ID is required")
     private Long customerId;
 
+    private String customerName;
+
+    private String customerEmail;
+
+    private String customerPhone;
+
     private Long deliveryPartnerId;
+
+    private String deliveryPartnerName;
 
     @Builder.Default
     private List<OrderItemDTO> orderItems = new ArrayList<>();

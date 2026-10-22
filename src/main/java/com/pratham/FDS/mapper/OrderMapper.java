@@ -33,7 +33,11 @@ public class OrderMapper {
         return OrderDTO.builder()
                 .id(order.getId())
                 .customerId(order.getCustomer() != null ? order.getCustomer().getId() : null)
+                .customerName(order.getCustomer() != null ? order.getCustomer().getName() : null)
+                .customerEmail(order.getCustomer() != null ? order.getCustomer().getEmail() : null)
+                .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : null)
                 .deliveryPartnerId(order.getDeliveryPartner() != null ? order.getDeliveryPartner().getId() : null)
+                .deliveryPartnerName(order.getDeliveryPartner() != null ? order.getDeliveryPartner().getName() : null)
                 .orderItems(order.getOrderItems() != null ?
                         order.getOrderItems().stream()
                                 .map(orderItemMapper::toDTO)

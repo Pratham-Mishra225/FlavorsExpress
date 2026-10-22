@@ -186,6 +186,15 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<OrderDTO> getAllOrders() {
+        log.info("Fetching all orders");
+        return orderRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+                .map(orderMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public OrderDTO assignDeliveryPartnerAutomatically(Long orderId) {
         log.info("Automatically assigning delivery partner to order ID: {}", orderId);
         Order order = findOrderOrThrow(orderId);
@@ -224,6 +233,10 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Cannot assign delivery partner to a delivered or cancelled order");
         }
 
+        if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+            throw new BadRequestException("Cannot reassign delivery partner while order is out for delivery");
+        }
+
         DeliveryPartner partner = deliveryPartnerRepository.findById(partnerId)
                 .orElseThrow(() -> new ResourceNotFoundException("DeliveryPartner", "id", partnerId));
 
@@ -231,12 +244,19 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Cannot assign an offline delivery partner");
         }
 
+        // If partner is already assigned to this order, return existing state
+        if (order.getDeliveryPartner() != null && order.getDeliveryPartner().getId().equals(partner.getId())) {
+            return orderMapper.toDTO(order);
+        }
+
+        if (partner.getStatus() == com.pratham.FDS.enums.DeliveryPartnerStatus.BUSY) {
+            throw new BadRequestException("Cannot assign a delivery partner who is currently busy with another delivery");
+        }
+
         // If the order already has a delivery partner, free up the previous partner first
         if (order.getDeliveryPartner() != null) {
             DeliveryPartner oldPartner = order.getDeliveryPartner();
-            if (!oldPartner.getId().equals(partner.getId())) {
-                freeDeliveryPartner(oldPartner);
-            }
+            freeDeliveryPartner(oldPartner);
         }
 
         partner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.BUSY);
@@ -253,6 +273,8 @@ public class OrderServiceImpl implements OrderService {
     public OrderDTO updateOrderStatus(Long orderId, OrderStatus status) {
         log.info("Updating order ID {} status to {}", orderId, status);
         Order order = findOrderOrThrow(orderId);
+
+        validateStatusTransition(order, status);
 
         order.setStatus(status);
 
@@ -300,6 +322,8 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Delivery partner can only update status to OUT_FOR_DELIVERY or DELIVERED");
         }
 
+        validateStatusTransition(order, status);
+
         order.setStatus(status);
 
         if (status == OrderStatus.DELIVERED) {
@@ -311,6 +335,70 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toDTO(savedOrder);
     }
 
+    /**
+     * Enforces valid business state transitions across the order lifecycle:
+     * PLACED -> PREPARING -> OUT_FOR_DELIVERY -> DELIVERED
+     */
+    private void validateStatusTransition(Order order, OrderStatus newStatus) {
+        OrderStatus currentStatus = order.getStatus();
+
+        if (currentStatus == newStatus) {
+            return;
+        }
+
+        if (currentStatus == OrderStatus.DELIVERED) {
+            throw new BadRequestException("Order #" + order.getId() + " is already DELIVERED and cannot be modified.");
+        }
+
+        if (currentStatus == OrderStatus.CANCELLED) {
+            throw new BadRequestException("Order #" + order.getId() + " is CANCELLED and cannot be modified.");
+        }
+
+        switch (currentStatus) {
+            case PLACED -> {
+                if (newStatus != OrderStatus.PREPARING && newStatus != OrderStatus.CANCELLED) {
+                    throw new BadRequestException(
+                            "Invalid status transition from " + currentStatus + " to " + newStatus +
+                            ". A placed order must move to PREPARING first."
+                    );
+                }
+            }
+            case PREPARING -> {
+                if (newStatus == OrderStatus.OUT_FOR_DELIVERY) {
+                    if (order.getDeliveryPartner() == null) {
+                        throw new BadRequestException("Cannot move order to OUT_FOR_DELIVERY without an assigned delivery partner.");
+                    }
+                } else if (newStatus != OrderStatus.READY && newStatus != OrderStatus.CANCELLED) {
+                    throw new BadRequestException(
+                            "Invalid status transition from " + currentStatus + " to " + newStatus +
+                            ". A preparing order can only transition to READY, OUT_FOR_DELIVERY, or CANCELLED."
+                    );
+                }
+            }
+            case READY -> {
+                if (newStatus == OrderStatus.OUT_FOR_DELIVERY) {
+                    if (order.getDeliveryPartner() == null) {
+                        throw new BadRequestException("Cannot move order to OUT_FOR_DELIVERY without an assigned delivery partner.");
+                    }
+                } else if (newStatus != OrderStatus.CANCELLED) {
+                    throw new BadRequestException(
+                            "Invalid status transition from " + currentStatus + " to " + newStatus +
+                            ". A ready order can only transition to OUT_FOR_DELIVERY or CANCELLED."
+                    );
+                }
+            }
+            case OUT_FOR_DELIVERY -> {
+                if (newStatus != OrderStatus.DELIVERED) {
+                    throw new BadRequestException(
+                            "Invalid status transition from " + currentStatus + " to " + newStatus +
+                            ". An order out for delivery can only transition to DELIVERED."
+                    );
+                }
+            }
+            default -> throw new BadRequestException("Unsupported status transition from " + currentStatus + " to " + newStatus);
+        }
+    }
+
     // Helper methods to reduce code duplication
     private Order findOrderOrThrow(Long id) {
         return orderRepository.findById(id)
@@ -318,7 +406,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void freeDeliveryPartner(DeliveryPartner partner) {
-        if (partner != null) {
+        if (partner != null && partner.getStatus() != com.pratham.FDS.enums.DeliveryPartnerStatus.OFFLINE) {
             partner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.AVAILABLE);
             deliveryPartnerRepository.save(partner);
         }

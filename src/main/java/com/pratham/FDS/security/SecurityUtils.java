@@ -103,8 +103,8 @@ public class SecurityUtils {
 
         if (current.getRole() == UserRole.DELIVERY_PARTNER) {
             DeliveryPartner partner = order.getDeliveryPartner();
-            if (partner == null || partner.getUserAccount() == null ||
-                !partner.getUserAccount().getId().equals(current.getId())) {
+            DeliveryPartner callerPartner = getCurrentDeliveryPartner();
+            if (partner == null || !partner.getId().equals(callerPartner.getId())) {
                 throw new AccessDeniedException("Access denied: You are not assigned to this delivery order.");
             }
             return;

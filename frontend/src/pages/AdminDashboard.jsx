@@ -40,6 +40,7 @@ const AdminDashboard = () => {
   const [newMenuItem, setNewMenuItem] = useState({ name: '', description: '', price: '', categoryId: '', isAvailable: true, isVegetarian: false, preparationTimeMinutes: 15 });
   const [newPartner, setNewPartner] = useState({ name: '', email: '', phone: '', status: 'AVAILABLE', password: '' });
   const [newPromo, setNewPromo] = useState({ code: '', discountPercentage: '', maxDiscountAmount: '', minOrderAmount: '', usageLimit: '', expiryDate: '', isActive: true });
+  const [orderActionLoading, setOrderActionLoading] = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -48,10 +49,11 @@ const AdminDashboard = () => {
         const res = await api.get('/analytics/admin');
         setAnalytics(res.data);
       } else if (activeTab === 'orders') {
-        const statuses = ['PLACED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-        const results = await Promise.all(statuses.map(s => api.get(`/orders/status/${s}`)));
-        setOrders(results.flatMap(r => r.data));
-        const pRes = await api.get('/delivery-partners');
+        const [oRes, pRes] = await Promise.all([
+          api.get('/orders'),
+          api.get('/delivery-partners'),
+        ]);
+        setOrders(oRes.data);
         setPartners(pRes.data);
       } else if (activeTab === 'menu') {
         const [mRes, cRes] = await Promise.all([
@@ -136,19 +138,40 @@ const AdminDashboard = () => {
 
   // ── Order Actions ───────────────────────────────────────────────────────────
   const handleAutoAssign = async (orderId) => {
-    try { await api.put(`/orders/${orderId}/assign-automatic`); loadData(); }
-    catch (err) { alert(err.response?.data?.message || 'Auto assign failed'); }
+    setOrderActionLoading(orderId);
+    try {
+      await api.put(`/orders/${orderId}/assign-automatic`);
+      await loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Auto assign failed');
+    } finally {
+      setOrderActionLoading(null);
+    }
   };
 
   const handleManualAssign = async (orderId, partnerId) => {
     if (!partnerId) return;
-    try { await api.put(`/orders/${orderId}/assign-manual/${partnerId}`); loadData(); }
-    catch (err) { alert(err.response?.data?.message || 'Manual assign failed'); }
+    setOrderActionLoading(orderId);
+    try {
+      await api.put(`/orders/${orderId}/assign-manual/${partnerId}`);
+      await loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Manual assign failed');
+    } finally {
+      setOrderActionLoading(null);
+    }
   };
 
   const handleUpdateOrderStatus = async (orderId, status) => {
-    try { await api.put(`/orders/${orderId}/status?status=${status}`); loadData(); }
-    catch (err) { alert(err.response?.data?.message || 'Status update failed'); }
+    setOrderActionLoading(orderId);
+    try {
+      await api.put(`/orders/${orderId}/status?status=${status}`);
+      await loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Status update failed');
+    } finally {
+      setOrderActionLoading(null);
+    }
   };
 
   // ── Promo Actions ───────────────────────────────────────────────────────────
@@ -279,42 +302,183 @@ const AdminDashboard = () => {
             <div className="text-center py-10 text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">No active orders</div>
           ) : (
             <div className="space-y-4">
-              {orders.map((ord) => (
-                <div key={ord.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                    <div>
-                      <span className="text-xs text-slate-500">Order ID</span>
-                      <h4 className="font-bold text-white text-base">#{ord.id}</h4>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">{ord.status}</span>
-                      <span className="text-sm font-extrabold text-orange-400">${Number(ord.totalAmount).toFixed(2)}</span>
-                    </div>
-                  </div>
+              {orders.map((ord) => {
+                const isActionBusy = orderActionLoading === ord.id;
+                const statusColor =
+                  ord.status === 'DELIVERED'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : ord.status === 'OUT_FOR_DELIVERY'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                    : ord.status === 'PREPARING'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : ord.status === 'CANCELLED'
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                    : 'bg-purple-500/20 text-purple-300 border-purple-500/30';
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
-                    <div>
-                      <p><strong>Address:</strong> {ord.deliveryAddress}</p>
-                      <p className="mt-1"><strong>Partner:</strong> {ord.deliveryPartnerId ? `#${ord.deliveryPartnerId}` : 'Unassigned'}</p>
-                      {ord.promoCode && <p className="mt-1 text-amber-400"><strong>Promo:</strong> {ord.promoCode}</p>}
+                return (
+                  <div key={ord.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    {/* Header */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                      <div>
+                        <span className="text-xs text-slate-500">Order ID</span>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-white text-base">#{ord.id}</h4>
+                          <span className="text-xs text-slate-400">
+                            · {ord.createdAt ? new Date(ord.createdAt).toLocaleString() : 'Recently placed'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${statusColor}`}>
+                          {ord.status}
+                        </span>
+                        <span className="text-base font-extrabold text-orange-400">
+                          ${Number(ord.totalAmount).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 justify-end">
-                      {!ord.deliveryPartnerId && (
+
+                    {/* Customer & Delivery Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 bg-slate-950/40 p-3.5 rounded-xl border border-slate-800/60">
+                      <div className="space-y-1">
+                        <p>
+                          <strong className="text-slate-400">Customer:</strong>{' '}
+                          <span className="text-slate-100 font-semibold">{ord.customerName || `Customer #${ord.customerId}`}</span>
+                          {ord.customerPhone && <span className="text-slate-400"> ({ord.customerPhone})</span>}
+                        </p>
+                        {ord.customerEmail && (
+                          <p><strong className="text-slate-400">Email:</strong> {ord.customerEmail}</p>
+                        )}
+                        <p><strong className="text-slate-400">Address:</strong> {ord.deliveryAddress}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p>
+                          <strong className="text-slate-400">Delivery Partner:</strong>{' '}
+                          <span className={ord.deliveryPartnerName ? 'text-cyan-400 font-semibold' : 'text-slate-400'}>
+                            {ord.deliveryPartnerName
+                              ? `${ord.deliveryPartnerName} (#${ord.deliveryPartnerId})`
+                              : 'Unassigned'}
+                          </span>
+                        </p>
+                        {ord.promoCode && (
+                          <p className="text-amber-400"><strong className="text-slate-400">Promo Code:</strong> {ord.promoCode}</p>
+                        )}
+                        <p><strong className="text-slate-400">Payment:</strong> {ord.paymentStatus || 'PENDING'}</p>
+                      </div>
+                    </div>
+
+                    {/* Ordered Items Summary */}
+                    <div className="text-xs">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                        Items Ordered ({ord.orderItems?.length || 0})
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ord.orderItems?.map((item) => (
+                          <span
+                            key={item.id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs"
+                          >
+                            <span className="font-medium">{item.menuItemName}</span>
+                            <span className="text-orange-400 font-bold">x{item.quantity}</span>
+                            <span className="text-slate-500">(${Number(item.price * item.quantity).toFixed(2)})</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-2.5 justify-end">
+                      {/* Step 3: Admin transitions PLACED to PREPARING */}
+                      {ord.status === 'PLACED' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(ord.id, 'PREPARING')}
+                          disabled={isActionBusy}
+                          className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shadow-amber-600/20 disabled:opacity-50 transition-all cursor-pointer"
+                        >
+                          {isActionBusy ? 'Updating...' : '👨‍🍳 Start Preparing'}
+                        </button>
+                      )}
+
+                      {/* Step 4: Admin assigns delivery partner (Auto or Manual) */}
+                      {ord.status !== 'DELIVERED' && ord.status !== 'CANCELLED' && (
                         <>
-                          <button onClick={() => handleAutoAssign(ord.id)} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">⚡ Auto Assign</button>
-                          <select onChange={(e) => handleManualAssign(ord.id, e.target.value)} defaultValue="" className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5">
-                            <option value="" disabled>Manual Assign...</option>
-                            {partners.map(p => <option key={p.id} value={p.id}>{p.name} ({p.status})</option>)}
+                          <button
+                            onClick={() => handleAutoAssign(ord.id)}
+                            disabled={isActionBusy || !!ord.deliveryPartnerId}
+                            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+                              ord.deliveryPartnerId
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-md shadow-emerald-600/20'
+                            }`}
+                            title={ord.deliveryPartnerId ? 'Partner already assigned' : 'Auto-assign available partner'}
+                          >
+                            {isActionBusy ? 'Assigning...' : '⚡ Auto Assign'}
+                          </button>
+
+                          <select
+                            onChange={(e) => handleManualAssign(ord.id, e.target.value)}
+                            disabled={isActionBusy || ord.status === 'OUT_FOR_DELIVERY'}
+                            value={ord.deliveryPartnerId || ''}
+                            className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:border-orange-500 outline-none"
+                          >
+                            <option value="" disabled>
+                              {ord.deliveryPartnerId ? 'Reassign Partner...' : 'Manual Assign...'}
+                            </option>
+                            {partners.map((p) => (
+                              <option key={p.id} value={p.id} disabled={p.status !== 'AVAILABLE' && p.id !== ord.deliveryPartnerId}>
+                                {p.name} ({p.status}){p.id === ord.deliveryPartnerId ? ' — Currently Assigned' : ''}
+                              </option>
+                            ))}
                           </select>
                         </>
                       )}
-                      <select value={ord.status} onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)} className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 font-semibold">
-                        {['PLACED','PREPARING','READY','OUT_FOR_DELIVERY','DELIVERED','CANCELLED'].map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+
+                      {/* Status Transition Selector with business rule validity */}
+                      {ord.status !== 'DELIVERED' && ord.status !== 'CANCELLED' && (
+                        <select
+                          value={ord.status}
+                          onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)}
+                          disabled={isActionBusy}
+                          className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 font-semibold focus:border-orange-500 outline-none cursor-pointer"
+                        >
+                          {ord.status === 'PLACED' && (
+                            <>
+                              <option value="PLACED">PLACED</option>
+                              <option value="PREPARING">PREPARING</option>
+                              <option value="CANCELLED">CANCELLED</option>
+                            </>
+                          )}
+                          {ord.status === 'PREPARING' && (
+                            <>
+                              <option value="PREPARING">PREPARING</option>
+                              <option value="READY">READY</option>
+                              <option value="OUT_FOR_DELIVERY" disabled={!ord.deliveryPartnerId}>
+                                OUT_FOR_DELIVERY {!ord.deliveryPartnerId ? '(Need Partner)' : ''}
+                              </option>
+                              <option value="CANCELLED">CANCELLED</option>
+                            </>
+                          )}
+                          {ord.status === 'READY' && (
+                            <>
+                              <option value="READY">READY</option>
+                              <option value="OUT_FOR_DELIVERY" disabled={!ord.deliveryPartnerId}>
+                                OUT_FOR_DELIVERY {!ord.deliveryPartnerId ? '(Need Partner)' : ''}
+                              </option>
+                              <option value="CANCELLED">CANCELLED</option>
+                            </>
+                          )}
+                          {ord.status === 'OUT_FOR_DELIVERY' && (
+                            <>
+                              <option value="OUT_FOR_DELIVERY">OUT_FOR_DELIVERY</option>
+                              <option value="DELIVERED">DELIVERED</option>
+                            </>
+                          )}
+                        </select>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
