@@ -17,8 +17,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return customerRepository.findByEmail(email)
+        // Normalize to match the lowercase storage convention used at account creation
+        String normalizedEmail = (email != null) ? email.trim().toLowerCase() : "";
+        return customerRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "No account found with email: " + email));
+                        "No account found with email: " + normalizedEmail));
     }
 }

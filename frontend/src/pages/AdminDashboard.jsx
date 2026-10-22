@@ -42,6 +42,8 @@ const AdminDashboard = () => {
   const [newPartner, setNewPartner] = useState({ name: '', email: '', phone: '', status: 'AVAILABLE', password: '' });
   const [newPromo, setNewPromo] = useState({ code: '', discountPercentage: '', maxDiscountAmount: '', minOrderAmount: '', usageLimit: '', expiryDate: '', isActive: true });
   const [orderActionLoading, setOrderActionLoading] = useState(null);
+  const [partnerSubmitting, setPartnerSubmitting] = useState(false);
+  const [partnerMessage, setPartnerMessage] = useState(null); // { type: 'success'|'error', text }
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -124,11 +126,36 @@ const AdminDashboard = () => {
   // ── Partner Actions ─────────────────────────────────────────────────────────
   const handleAddPartner = async (e) => {
     e.preventDefault();
+    setPartnerMessage(null);
+
+    // Frontend password validation
+    if (!newPartner.password || newPartner.password.trim().length < 6) {
+      setPartnerMessage({ type: 'error', text: 'Initial password must be at least 6 characters.' });
+      return;
+    }
+
+    setPartnerSubmitting(true);
     try {
-      await api.post('/delivery-partners', newPartner);
+      const payload = {
+        ...newPartner,
+        email: newPartner.email.trim().toLowerCase(),
+        name: newPartner.name.trim(),
+        phone: newPartner.phone.trim(),
+        password: newPartner.password.trim(),
+      };
+      await api.post('/delivery-partners', payload);
+      const createdEmail = payload.email;
       setNewPartner({ name: '', email: '', phone: '', status: 'AVAILABLE', password: '' });
+      setPartnerMessage({
+        type: 'success',
+        text: `Partner account created. Login email: ${createdEmail} — they can now sign in with the password you set.`,
+      });
       loadData();
-    } catch (err) { alert(err.response?.data?.message || 'Failed to create delivery partner'); }
+    } catch (err) {
+      setPartnerMessage({ type: 'error', text: err.response?.data?.message || 'Failed to create delivery partner.' });
+    } finally {
+      setPartnerSubmitting(false);
+    }
   };
 
   const handleDeletePartner = async (id) => {
@@ -568,12 +595,43 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-white dark:bg-slate-900/90 border border-stone-200 dark:border-slate-800 rounded-3xl p-6 h-fit space-y-4 shadow-sm">
             <h3 className="text-lg font-black text-stone-900 dark:text-white">Register Partner</h3>
+
+            {/* Success / Error Message */}
+            {partnerMessage && (
+              <div className={`p-3 rounded-xl text-xs font-semibold border ${
+                partnerMessage.type === 'success'
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400'
+              }`}>
+                {partnerMessage.text}
+              </div>
+            )}
+
             <form onSubmit={handleAddPartner} className="space-y-3">
-              <input required placeholder="Partner Name" value={newPartner.name} onChange={e => setNewPartner({...newPartner, name: e.target.value})} className={inputCls} />
-              <input type="email" required placeholder="Email Address" value={newPartner.email} onChange={e => setNewPartner({...newPartner, email: e.target.value})} className={inputCls} />
-              <input type="tel" required placeholder="Phone Number" value={newPartner.phone} onChange={e => setNewPartner({...newPartner, phone: e.target.value})} className={inputCls} />
-              <input type="password" placeholder="Initial Password (default: PartnerPass123!)" value={newPartner.password || ''} onChange={e => setNewPartner({...newPartner, password: e.target.value})} className={inputCls} />
-              <button type="submit" className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-md cursor-pointer">Register Partner</button>
+              <input required placeholder="Partner Name" value={newPartner.name} onChange={e => { setNewPartner({...newPartner, name: e.target.value}); setPartnerMessage(null); }} className={inputCls} />
+              <input type="email" required placeholder="Email Address" value={newPartner.email} onChange={e => { setNewPartner({...newPartner, email: e.target.value}); setPartnerMessage(null); }} className={inputCls} />
+              <input type="tel" required placeholder="Phone Number" value={newPartner.phone} onChange={e => { setNewPartner({...newPartner, phone: e.target.value}); setPartnerMessage(null); }} className={inputCls} />
+              <div>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Initial Login Password (min 6 chars)"
+                  value={newPartner.password || ''}
+                  onChange={e => { setNewPartner({...newPartner, password: e.target.value}); setPartnerMessage(null); }}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-[11px] text-stone-400 dark:text-slate-500">
+                  The partner will use this password to sign in at the Delivery Partner login.
+                </p>
+              </div>
+              <button
+                type="submit"
+                disabled={partnerSubmitting}
+                className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold text-sm shadow-md cursor-pointer transition-colors"
+              >
+                {partnerSubmitting ? 'Registering…' : 'Register Partner'}
+              </button>
             </form>
           </div>
           <div className="lg:col-span-2 space-y-3">

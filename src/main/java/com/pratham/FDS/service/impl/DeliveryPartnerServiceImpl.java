@@ -46,11 +46,13 @@ public class DeliveryPartnerServiceImpl implements DeliveryPartnerService {
             throw new EmailAlreadyExistsException(normalizedEmail);
         }
 
-        // 1. Transactionally provision linked login account with ROLE_DELIVERY
-        String rawPassword = (dto.getPassword() != null && !dto.getPassword().trim().isEmpty())
-                ? dto.getPassword().trim()
-                : "PartnerPass123!";
+        // Require an explicit initial password — no silent fallback
+        if (dto.getPassword() == null || dto.getPassword().trim().isEmpty()) {
+            throw new BadRequestException("An initial login password is required when registering a delivery partner.");
+        }
+        String rawPassword = dto.getPassword().trim();
 
+        // 1. Provision linked login account with DELIVERY_PARTNER role
         Customer customerAccount = Customer.builder()
                 .name(dto.getName().trim())
                 .email(normalizedEmail)

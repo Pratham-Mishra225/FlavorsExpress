@@ -38,8 +38,9 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Public registration can only create customer accounts. Privileged role registration is forbidden.");
         }
 
-        if (customerRepository.existsByEmail(request.getEmail())) {
-            throw new com.pratham.FDS.exception.EmailAlreadyExistsException(request.getEmail());
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        if (customerRepository.existsByEmail(normalizedEmail)) {
+            throw new com.pratham.FDS.exception.EmailAlreadyExistsException(normalizedEmail);
         }
 
         // Public registration always enforces CUSTOMER role on the server
@@ -65,16 +66,18 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse login(LoginRequest request) {
-        log.info("Authenticating user: {}", request.getEmail());
-        
+        // Normalize email to match the lowercase storage convention used at account creation
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        log.info("Authenticating user: {}", normalizedEmail);
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
+                        normalizedEmail,
                         request.getPassword()
                 )
         );
 
-        Customer customer = customerRepository.findByEmail(request.getEmail())
+        Customer customer = customerRepository.findByEmail(normalizedEmail)
                 .orElseThrow(); // Should be found if authentication passed
 
         String jwtToken = jwtUtil.generateToken(customer);
