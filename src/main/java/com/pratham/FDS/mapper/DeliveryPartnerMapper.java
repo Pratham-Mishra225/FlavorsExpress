@@ -17,6 +17,7 @@ public class DeliveryPartnerMapper {
                 .email(partner.getEmail())
                 .phone(partner.getPhone())
                 .status(partner.getStatus())
+                .lastAssignedAt(partner.getLastAssignedAt())
                 .build();
     }
 
@@ -30,6 +31,7 @@ public class DeliveryPartnerMapper {
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
                 .status(dto.getStatus())
+                .lastAssignedAt(dto.getLastAssignedAt())
                 .build();
     }
 }

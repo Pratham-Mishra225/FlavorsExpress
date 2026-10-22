@@ -17,5 +17,7 @@ public interface DeliveryPartnerService {
 
     DeliveryPartnerDTO updateDeliveryPartner(Long id, DeliveryPartnerDTO deliveryPartnerDTO);
 
+    DeliveryPartnerDTO updateAvailability(Long id, DeliveryPartnerStatus status);
+
     void deleteDeliveryPartner(Long id);
 }

@@ -203,24 +203,47 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Cannot assign delivery partner to a delivered or cancelled order");
         }
 
+        if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+            throw new BadRequestException("Cannot assign delivery partner while order is already out for delivery");
+        }
+
         if (order.getDeliveryPartner() != null) {
             throw new BadRequestException("Order is already assigned to a delivery partner");
         }
 
-        // Find available partners
-        List<DeliveryPartner> availablePartners = deliveryPartnerRepository.findByStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.AVAILABLE);
-        if (availablePartners.isEmpty()) {
-            throw new BadRequestException("No available delivery partners at the moment");
+        // Deterministic, fair assignment query: status == AVAILABLE and activeDeliveries == 0
+        // Sorted by least recently assigned first (nulls first, then lastAssignedAt asc, tie-breaker id asc)
+        List<DeliveryPartner> eligiblePartners = deliveryPartnerRepository.findEligiblePartnersForAssignment();
+        if (eligiblePartners.isEmpty()) {
+            throw new BadRequestException("No available delivery partners at the moment. All partners are busy or offline.");
         }
 
-        DeliveryPartner partner = availablePartners.get(0);
-        partner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.BUSY);
-        deliveryPartnerRepository.save(partner);
+        DeliveryPartner selectedPartner = null;
+        for (DeliveryPartner candidate : eligiblePartners) {
+            // Lock partner record for concurrency safety
+            DeliveryPartner lockedPartner = deliveryPartnerRepository.findByIdWithLock(candidate.getId())
+                    .orElse(null);
+            if (lockedPartner != null
+                    && lockedPartner.getStatus() == com.pratham.FDS.enums.DeliveryPartnerStatus.AVAILABLE
+                    && orderRepository.countActiveDeliveriesByPartnerId(lockedPartner.getId()) == 0) {
+                selectedPartner = lockedPartner;
+                break;
+            }
+        }
 
-        order.setDeliveryPartner(partner);
+        if (selectedPartner == null) {
+            throw new BadRequestException("No available delivery partners at the moment. All eligible partners became busy.");
+        }
+
+        selectedPartner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.BUSY);
+        selectedPartner.setLastAssignedAt(LocalDateTime.now());
+        deliveryPartnerRepository.save(selectedPartner);
+
+        order.setDeliveryPartner(selectedPartner);
         Order savedOrder = orderRepository.save(order);
 
-        log.info("Order ID {} automatically assigned to delivery partner ID {}", orderId, partner.getId());
+        log.info("Order ID {} automatically assigned to delivery partner ID {} ({})",
+                orderId, selectedPartner.getId(), selectedPartner.getName());
         return orderMapper.toDTO(savedOrder);
     }
 
@@ -237,29 +260,36 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Cannot reassign delivery partner while order is out for delivery");
         }
 
-        DeliveryPartner partner = deliveryPartnerRepository.findById(partnerId)
+        DeliveryPartner partner = deliveryPartnerRepository.findByIdWithLock(partnerId)
                 .orElseThrow(() -> new ResourceNotFoundException("DeliveryPartner", "id", partnerId));
-
-        if (partner.getStatus() == com.pratham.FDS.enums.DeliveryPartnerStatus.OFFLINE) {
-            throw new BadRequestException("Cannot assign an offline delivery partner");
-        }
 
         // If partner is already assigned to this order, return existing state
         if (order.getDeliveryPartner() != null && order.getDeliveryPartner().getId().equals(partner.getId())) {
             return orderMapper.toDTO(order);
         }
 
+        if (partner.getStatus() == com.pratham.FDS.enums.DeliveryPartnerStatus.OFFLINE) {
+            throw new BadRequestException("Cannot assign an offline delivery partner");
+        }
+
         if (partner.getStatus() == com.pratham.FDS.enums.DeliveryPartnerStatus.BUSY) {
             throw new BadRequestException("Cannot assign a delivery partner who is currently busy with another delivery");
+        }
+
+        // Validate partner has 0 active deliveries (max 1 active delivery rule)
+        long partnerActiveDeliveries = orderRepository.countActiveDeliveriesByPartnerId(partner.getId());
+        if (partnerActiveDeliveries > 0) {
+            throw new BadRequestException("Cannot assign a delivery partner who already has an active delivery assignment");
         }
 
         // If the order already has a delivery partner, free up the previous partner first
         if (order.getDeliveryPartner() != null) {
             DeliveryPartner oldPartner = order.getDeliveryPartner();
-            freeDeliveryPartner(oldPartner);
+            freeDeliveryPartner(oldPartner, order.getId());
         }
 
         partner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.BUSY);
+        partner.setLastAssignedAt(LocalDateTime.now());
         deliveryPartnerRepository.save(partner);
 
         order.setDeliveryPartner(partner);
@@ -281,8 +311,8 @@ public class OrderServiceImpl implements OrderService {
         // If transitioning to DELIVERED or CANCELLED, free up the partner if assigned
         if (status == OrderStatus.DELIVERED || status == OrderStatus.CANCELLED) {
             if (order.getDeliveryPartner() != null) {
-                freeDeliveryPartner(order.getDeliveryPartner());
-                log.info("Freed up delivery partner ID {} as order status is {}", order.getDeliveryPartner().getId(), status);
+                freeDeliveryPartner(order.getDeliveryPartner(), order.getId());
+                log.info("Processed partner status for partner ID {} as order status is {}", order.getDeliveryPartner().getId(), status);
             }
         }
 
@@ -327,7 +357,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(status);
 
         if (status == OrderStatus.DELIVERED) {
-            freeDeliveryPartner(order.getDeliveryPartner());
+            freeDeliveryPartner(order.getDeliveryPartner(), order.getId());
             log.info("Freed up delivery partner ID {} as order was successfully delivered", order.getDeliveryPartner().getId());
         }
 
@@ -405,10 +435,26 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", id));
     }
 
-    private void freeDeliveryPartner(DeliveryPartner partner) {
-        if (partner != null && partner.getStatus() != com.pratham.FDS.enums.DeliveryPartnerStatus.OFFLINE) {
-            partner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.AVAILABLE);
+    private void freeDeliveryPartner(DeliveryPartner partner, Long currentOrderId) {
+        if (partner == null) {
+            return;
+        }
+        long remainingActive = (currentOrderId != null)
+                ? orderRepository.countActiveDeliveriesByPartnerIdExcludingOrder(partner.getId(), currentOrderId)
+                : orderRepository.countActiveDeliveriesByPartnerId(partner.getId());
+
+        if (remainingActive == 0) {
+            if (partner.getStatus() != com.pratham.FDS.enums.DeliveryPartnerStatus.OFFLINE) {
+                partner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.AVAILABLE);
+                deliveryPartnerRepository.save(partner);
+            }
+        } else {
+            partner.setStatus(com.pratham.FDS.enums.DeliveryPartnerStatus.BUSY);
             deliveryPartnerRepository.save(partner);
         }
+    }
+
+    private void freeDeliveryPartner(DeliveryPartner partner) {
+        freeDeliveryPartner(partner, null);
     }
 }

@@ -24,6 +24,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     long countByStatus(OrderStatus status);
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.deliveryPartner.id = :partnerId AND o.status NOT IN (com.pratham.FDS.enums.OrderStatus.DELIVERED, com.pratham.FDS.enums.OrderStatus.CANCELLED)")
+    long countActiveDeliveriesByPartnerId(@Param("partnerId") Long partnerId);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.deliveryPartner.id = :partnerId AND o.id != :excludedOrderId AND o.status NOT IN (com.pratham.FDS.enums.OrderStatus.DELIVERED, com.pratham.FDS.enums.OrderStatus.CANCELLED)")
+    long countActiveDeliveriesByPartnerIdExcludingOrder(@Param("partnerId") Long partnerId, @Param("excludedOrderId") Long excludedOrderId);
+
+    @Query("SELECT o FROM Order o WHERE o.deliveryPartner.id = :partnerId AND o.status NOT IN (com.pratham.FDS.enums.OrderStatus.DELIVERED, com.pratham.FDS.enums.OrderStatus.CANCELLED)")
+    List<Order> findActiveDeliveriesByPartnerId(@Param("partnerId") Long partnerId);
+
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status != 'CANCELLED'")
     BigDecimal sumTotalAmount();
 

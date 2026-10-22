@@ -34,6 +34,8 @@ public class DeliveryPartnerDTO {
     @NotNull(message = "Delivery partner status is required")
     private DeliveryPartnerStatus status;
 
+    private java.time.LocalDateTime lastAssignedAt;
+
     @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
 }

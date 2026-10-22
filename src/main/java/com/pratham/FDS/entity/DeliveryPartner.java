@@ -56,6 +56,9 @@ public class DeliveryPartner {
     @OneToMany(mappedBy = "deliveryPartner", fetch = FetchType.LAZY)
     private List<Order> orders = new ArrayList<>();
 
+    @Column(name = "last_assigned_at")
+    private LocalDateTime lastAssignedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -18,6 +18,9 @@ import com.pratham.FDS.enums.UserRole;
 import com.pratham.FDS.repository.CustomerRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.pratham.FDS.exception.BadRequestException;
+import com.pratham.FDS.repository.OrderRepository;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +32,7 @@ public class DeliveryPartnerServiceImpl implements DeliveryPartnerService {
 
     private final DeliveryPartnerRepository deliveryPartnerRepository;
     private final CustomerRepository customerRepository;
+    private final OrderRepository orderRepository;
     private final DeliveryPartnerMapper deliveryPartnerMapper;
     private final PasswordEncoder passwordEncoder;
 
@@ -116,6 +120,35 @@ public class DeliveryPartnerServiceImpl implements DeliveryPartnerService {
         DeliveryPartner updated = deliveryPartnerRepository.save(existing);
         log.info("Delivery partner updated successfully with ID: {}", updated.getId());
         return deliveryPartnerMapper.toDTO(updated);
+    }
+
+    @Override
+    public DeliveryPartnerDTO updateAvailability(Long id, DeliveryPartnerStatus newStatus) {
+        log.info("Updating availability for delivery partner ID {} to {}", id, newStatus);
+        DeliveryPartner partner = deliveryPartnerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("DeliveryPartner", "id", id));
+
+        if (newStatus == null) {
+            throw new BadRequestException("Status is required (AVAILABLE, BUSY, or OFFLINE)");
+        }
+
+        if (partner.getStatus() == newStatus) {
+            return deliveryPartnerMapper.toDTO(partner);
+        }
+
+        // Prevent a partner with an active delivery from manually setting their status to AVAILABLE or OFFLINE
+        long activeCount = orderRepository.countActiveDeliveriesByPartnerId(partner.getId());
+        if (activeCount > 0 && newStatus != DeliveryPartnerStatus.BUSY) {
+            throw new BadRequestException(
+                    "Cannot set status to " + newStatus + " while handling " + activeCount + " active delivery assignment(s). " +
+                    "Complete all active deliveries first."
+            );
+        }
+
+        partner.setStatus(newStatus);
+        DeliveryPartner saved = deliveryPartnerRepository.save(partner);
+        log.info("Delivery partner ID {} availability successfully updated to {}", id, newStatus);
+        return deliveryPartnerMapper.toDTO(saved);
     }
 
     @Override

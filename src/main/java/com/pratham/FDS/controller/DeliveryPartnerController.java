@@ -36,6 +36,25 @@ public class DeliveryPartnerController {
         return ResponseEntity.ok(deliveryPartnerService.getDeliveryPartnerById(partner.getId()));
     }
 
+    @PutMapping({"/me/status", "/me/availability"})
+    public ResponseEntity<DeliveryPartnerDTO> updateMyStatus(
+            @RequestParam(required = false) DeliveryPartnerStatus status,
+            @RequestBody(required = false) java.util.Map<String, Object> body) {
+        DeliveryPartner partner = securityUtils.getCurrentDeliveryPartner();
+        DeliveryPartnerStatus targetStatus = status;
+        if (targetStatus == null && body != null && body.containsKey("status")) {
+            try {
+                targetStatus = DeliveryPartnerStatus.valueOf(body.get("status").toString().trim().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                throw new com.pratham.FDS.exception.BadRequestException("Invalid status. Allowed values: AVAILABLE, BUSY, OFFLINE");
+            }
+        }
+        if (targetStatus == null) {
+            throw new com.pratham.FDS.exception.BadRequestException("Status is required (AVAILABLE, BUSY, or OFFLINE)");
+        }
+        return ResponseEntity.ok(deliveryPartnerService.updateAvailability(partner.getId(), targetStatus));
+    }
+
     @PostMapping
     public ResponseEntity<DeliveryPartnerDTO> createDeliveryPartner(
             @Valid @RequestBody DeliveryPartnerDTO deliveryPartnerDTO) {
