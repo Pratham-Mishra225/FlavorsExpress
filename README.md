@@ -386,8 +386,8 @@ FDS/
 | `JWT_EXPIRATION` | Token validity duration in milliseconds | No | `86400000` (24 hours) |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed frontend origin URLs | No | `http://localhost:5173,http://127.0.0.1:5173` |
 | `BOOTSTRAP_ADMIN_ENABLED` | Flag to provision an administrator account on initial startup | No | `false` |
-| `BOOTSTRAP_ADMIN_EMAIL` | Email for bootstrapped administrator account | No | `admin@flavorsexpress.com` |
-| `BOOTSTRAP_ADMIN_PASSWORD` | Initial password for bootstrapped administrator account | No | `AdminPass123!` |
+| `BOOTSTRAP_ADMIN_EMAIL` | Email for bootstrapped administrator account | No | `abc@xyz.com` |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Initial password for bootstrapped administrator account | No | `#xyz123` |
 
 > **Configuration Loading:** Spring Boot loads the root `.env` via `DotenvInitializer` before context initialization. System environment variables take precedence over `.env` files.
 
